@@ -1,0 +1,7 @@
+project_id = "yue-ma"
+
+[functions.calculate-results]
+verify_jwt = true
+
+[functions.deadline-worker]
+verify_jwt = false

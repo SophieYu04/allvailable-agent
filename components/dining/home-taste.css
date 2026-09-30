@@ -1,0 +1,99 @@
+/* Taste direction: variance 7 / motion 5 / density 2.
+   Light theme follows the approved product brief. Teal is the only accent.
+   Radius rule: 12px for controls, 20px for panels, circles for initials. */
+body:has(.allvailable-home){background:#f6f7f5}
+.allvailable-home{--ink:#202925;--muted:#626c66;--accent:#215f50;--home-line:#dce1dc;max-width:1320px;min-height:100dvh;padding:0 52px 24px;font-family:"Helvetica Neue",Arial,"PingFang TC",sans-serif}
+.allvailable-home .dining-nav{height:80px;min-height:0;padding:0;border:0;border-bottom:1px solid var(--home-line);border-radius:0;background:transparent;backdrop-filter:none}
+.allvailable-home .dining-brand{font-size:27px;letter-spacing:-1.5px;font-weight:600;color:var(--ink)}
+.allvailable-home .dining-nav .dining-actions{gap:24px;font-size:13px}
+.allvailable-home .language-switch{padding:8px 0;border:0;background:transparent;color:var(--muted)}
+.allvailable-home .dining-nav a:not(.dining-brand){text-decoration:none;color:var(--ink)}
+.allvailable-home .dining-hero{grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);gap:56px;padding:64px 0 68px;align-items:center}
+.allvailable-home .dining-hero h1{font-size:clamp(44px,5.2vw,72px);font-weight:500;line-height:1.05;letter-spacing:-.065em;margin:0 0 28px;max-width:600px}
+.allvailable-home .dining-hero h1 span{display:block;color:var(--accent)}
+.allvailable-home .dining-hero p{font-size:15px;line-height:1.6;max-width:300px;margin:0 0 32px}
+.allvailable-home .dining-primary{display:inline-flex;align-items:center;justify-content:space-between;gap:32px;min-height:54px;padding:14px 20px;background:var(--accent);border-radius:12px;color:#f7faf7;font-size:14px;font-weight:500;white-space:nowrap;text-decoration:none;box-shadow:none}
+.allvailable-home .dining-primary svg{transition:transform .2s ease}
+.allvailable-home .dining-primary:hover svg{transform:translate(2px,-2px)}
+.allvailable-home .dining-primary:active{transform:scale(.98)}
+.allvailable-home .dining-footer{display:flex;justify-content:flex-end;align-items:center;gap:12px;margin-top:12px;padding-top:20px;font-size:12px;border-color:var(--home-line)}
+.allvailable-home .dining-message{background:transparent;border:0;border-top:1px solid var(--home-line);border-radius:0;padding:14px 0;color:var(--muted);font-size:13px}
+.allvailable-home .dining-message button{background:transparent;min-height:44px;padding:8px 16px;border-color:var(--home-line)}
+.allvailable-home .dining-panel{border-radius:20px;box-shadow:none}
+.allvailable-home .dining-list{padding:24px 0}
+.allvailable-home .dining-meal{border-radius:12px;background:transparent;box-shadow:none}
+.allvailable-home .dining-empty{padding:28px 0}
+.availability-scene{perspective:1100px;min-width:0;padding:10px 0;isolation:isolate}
+.availability-object{border:1px solid var(--home-line);border-radius:20px;background:#fafbf9;overflow:hidden;box-shadow:0 20px 45px -24px #30473835;transform-origin:center;will-change:transform}
+.together-photo{position:relative;aspect-ratio:2.25;overflow:hidden;background:#dce1dc}
+.together-photo img{object-fit:cover;object-position:center 52%;filter:saturate(.65)}
+.time-experiment{padding:22px 24px 14px}
+.experiment-heading{display:flex;align-items:center;justify-content:space-between;font-size:13px;margin-bottom:20px;color:var(--ink)}
+.experiment-heading>span:last-child{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:11px}
+.reply-progress{display:flex;justify-content:space-between;gap:12px;font-size:12px;color:var(--muted);padding-bottom:18px}
+.reply-progress>span:last-child{display:flex;align-items:center;gap:5px;color:var(--accent)}
+.candidate-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.allvailable-home .candidate-options button{min-width:0;min-height:44px;padding:8px 4px;border:1px solid var(--home-line);border-radius:12px;background:transparent;color:var(--muted);font-size:11px;font-variant-numeric:tabular-nums;transition:background .2s,transform .2s}
+.allvailable-home .candidate-options button.is-selected{background:var(--accent);border-color:var(--accent);color:#fff}
+.allvailable-home .candidate-options button:hover{transform:translateY(-2px)}
+.allvailable-home .candidate-options button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.experiment-result{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-top:20px;font-size:11px;font-variant-numeric:tabular-nums}
+.experiment-result strong{font-size:22px;letter-spacing:-1px;font-weight:500}
+.experiment-result span{color:var(--muted)}
+.candidate-response .everyone{color:var(--accent)}
+.candidate-people{list-style:none;padding:0;margin:14px 0}
+.candidate-people li{display:flex;justify-content:space-between;align-items:center;min-height:34px;border-bottom:1px solid var(--home-line);font-size:12px}
+.candidate-people li>span:last-child{display:flex;align-items:center;gap:6px}
+.calendar-private{display:flex;align-items:center;justify-content:center;gap:6px;color:var(--muted);font-size:11px;padding:4px 0}
+@media(min-width:768px) and (prefers-reduced-motion:no-preference){.allvailable-home .dining-hero>div:first-child{animation:home-enter .65s ease both}.availability-scene{animation:home-enter .8s .08s ease both}}
+@keyframes home-enter{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:1023px){.allvailable-home{padding-inline:28px}.allvailable-home .dining-hero{gap:32px}.time-experiment{padding-inline:16px}}
+@media(max-width:767px){.allvailable-home{padding:0 20px 24px}.allvailable-home .dining-nav{height:72px}.allvailable-home .dining-brand{font-size:24px}.allvailable-home .dining-nav .dining-actions{gap:16px}.allvailable-home .dining-hero{grid-template-columns:minmax(0,1fr);padding:40px 0 28px;gap:32px}.allvailable-home .dining-hero h1{font-size:clamp(42px,9vw,64px);margin-bottom:20px}.allvailable-home .dining-hero p{font-size:14px;margin-bottom:24px;max-width:none}.availability-scene{padding:0}.together-photo{aspect-ratio:2.65}.time-experiment{padding:18px 14px 12px}.experiment-heading{margin-bottom:12px}.allvailable-home .dining-footer{justify-content:flex-start}.allvailable-home .dining-message{font-size:12px}}
+@media(prefers-reduced-motion:reduce){.allvailable-home *, .allvailable-home *::before,.allvailable-home *::after{animation:none!important;transition:none!important}.availability-object{transform:none!important;will-change:auto}.allvailable-home .dining-primary:hover svg,.allvailable-home .dining-primary:active,.allvailable-home .candidate-options button:hover{transform:none}}
+
+/* Refined invitation hierarchy: one selected result, no shared calendar grid. */
+.allvailable-home .dining-hero{padding-block:76px;gap:72px}
+.allvailable-home .dining-hero h1{letter-spacing:-.055em;font-size:clamp(46px,5.4vw,76px)}
+.allvailable-home .dining-hero p{max-width:310px;text-wrap:pretty}
+.allvailable-home .dining-primary{min-width:190px}
+.experiment-heading{font-size:18px;font-weight:500;letter-spacing:-.4px;margin-bottom:12px}
+.experiment-heading>span:last-child{font-weight:400;border:1px solid var(--home-line);border-radius:6px;padding:2px 7px;letter-spacing:0}
+.reply-progress{padding-bottom:20px}
+.allvailable-home .candidate-options button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 6px;min-height:66px;background:#f0f3ef}
+.candidate-options button span{font-size:10px}
+.candidate-options button strong{font-size:17px;font-weight:500;letter-spacing:-.3px}
+.allvailable-home .candidate-options button.is-selected{background:var(--accent);color:#fff}
+.candidate-caption{font-size:11px;color:var(--muted);margin-top:24px}
+.experiment-result{display:block;margin-top:2px}
+.experiment-result strong{display:block;font-size:clamp(28px,3vw,38px);letter-spacing:-1.5px;line-height:1.3}
+.experiment-result>span{display:block;margin-top:4px;font-size:12px}
+.candidate-people{margin:18px 0 14px}
+.candidate-people li{min-height:44px}
+.candidate-person{display:flex;align-items:center;gap:10px}
+.person-initial{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:#e8ede7;color:var(--muted);font-size:10px}
+.calendar-private{padding-block:8px}
+.allvailable-home .dining-panel{max-width:800px;margin-inline:auto;padding:32px}
+.allvailable-home .dining-panel h2{font-size:30px;font-weight:500;letter-spacing:-1px;margin:4px 0 28px}
+.allvailable-home .dining-form{gap:22px}
+.allvailable-home .dining-form input,.allvailable-home .dining-form select{min-height:50px;border-color:var(--home-line);background:#fafbf9}
+.allvailable-home .dining-form label{font-size:12px;color:var(--muted)}
+.allvailable-home .dining-form input:focus,.allvailable-home .dining-form select:focus{background:#fff}
+.allvailable-home .dining-list h2{font-size:24px;font-weight:500;margin-right:auto;letter-spacing:-.5px}
+.allvailable-home .dining-list .dining-actions>button{font-size:12px;border-color:transparent;background:transparent}
+.allvailable-home .dining-list .dining-actions>button[aria-pressed=true]{background:#e7ede7;box-shadow:none}
+.allvailable-home .dining-meal{background:#fafbf9;border-color:var(--home-line);padding:22px}
+.allvailable-home .dining-meal h3{font-weight:500}
+@media(max-width:1023px){.allvailable-home .dining-hero{gap:36px}}
+@media(max-width:767px){
+  .allvailable-home .dining-hero{padding-block:36px;gap:30px}
+  .allvailable-home .dining-hero h1{font-size:clamp(46px,11vw,64px);margin-bottom:18px}
+  .allvailable-home .dining-hero p{max-width:290px}
+  .allvailable-home .dining-primary{min-height:52px}
+  .together-photo{aspect-ratio:3.2}
+  .time-experiment{padding:20px}
+  .experiment-result strong{font-size:32px}
+  .allvailable-home .dining-panel{padding:22px 18px}
+  .allvailable-home .dining-form{gap:18px}
+  .allvailable-home .dining-cards{grid-template-columns:minmax(0,1fr)}
+}
+@media(prefers-reduced-motion:reduce){.allvailable-home .candidate-options button:hover{transform:none}}

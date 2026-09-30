@@ -1,0 +1,8 @@
+.navigation-menu { position:relative; margin-left:auto; }
+.navigation-menu .navigation-toggle { display:grid; place-items:center; width:44px; height:44px; padding:0; border:0; background:transparent; color:inherit; cursor:pointer; border-radius:12px; }
+.navigation-toggle:hover { background:rgba(45,70,54,.06); }
+.navigation-panel { position:absolute; right:0; top:calc(100% + 8px); z-index:50; min-width:168px; padding:6px; background:#fffefa; border:1px solid #e4e7df; border-radius:14px; box-shadow:0 8px 28px #24382b14; }
+.navigation-panel a,.navigation-panel button { display:block; width:100%; box-sizing:border-box; padding:12px 14px; text-align:left; font:inherit; font-size:14px; text-decoration:none; border:0; border-radius:8px; background:transparent; color:#294639; cursor:pointer; }
+.navigation-panel a:hover,.navigation-panel button:hover { background:#f0f3ed; }
+.navigation-panel p { padding:8px; font-size:12px; }
+.navigation-menu :focus-visible { outline:2px solid #345c4c; outline-offset:2px; }

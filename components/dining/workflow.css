@@ -1,0 +1,166 @@
+/* Invitation workflow: private editing first, shared candidate results second. */
+body:has(.workflow-home),body:has(.workflow-detail){background:#f6f7f5}
+.workflow-home,.workflow-detail{--ink:#202925;--muted:#626c66;--accent:#215f50;max-width:1120px;padding:24px 32px 60px}
+.workflow-home .dining-nav,.workflow-detail .dining-nav{background:transparent;backdrop-filter:none;border:0;border-bottom:1px solid #dce1dc;border-radius:0;padding:8px 0 22px}
+.workflow-heading{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:44px 0 28px}
+.workflow-heading h1{font-size:clamp(32px,5vw,48px);font-weight:500;letter-spacing:-1.8px;margin:4px 0}
+.workflow-heading .dining-primary{display:flex;gap:20px;align-items:center}
+.workflow-welcome{max-width:700px;padding:28px 0 36px}
+.workflow-welcome h2{font-size:clamp(24px,3vw,32px);line-height:1.35;font-weight:500;letter-spacing:-.8px;margin:0 0 16px;max-width:540px}
+.workflow-welcome p{color:var(--muted);max-width:470px;font-size:14px}
+.workflow-path{display:flex;flex-wrap:wrap;gap:30px;padding:22px 0 0;list-style:decimal inside;font-size:13px;color:var(--accent)}
+.workflow-home .dining-panel{margin-block:24px;padding:28px;box-shadow:none}
+.workflow-home .dining-panel h2{margin:0 0 24px;font-weight:500;font-size:28px}
+.workflow-home .dining-list{padding:24px 0}
+.gathering-filters{display:flex;gap:6px;margin-right:auto}
+.gathering-filters button,.workflow-home .dining-list>.dining-actions>button{border:0;background:transparent;font-size:13px}
+.gathering-filters button[aria-pressed=true]{background:#e4ece5;box-shadow:none}
+.workflow-home .dining-meal{box-shadow:none;border-radius:14px;padding:22px;position:relative}
+.workflow-home .dining-meal h3{font-size:23px;font-weight:500;margin-block:18px 12px}
+.gathering-role{display:block;font-size:11px;color:var(--muted);margin-top:12px}
+.my-response{font-weight:600;color:var(--accent)!important}
+.workflow-detail .dining-workspace{display:flex;flex-direction:column;gap:20px;max-width:760px;margin-inline:auto}
+.workflow-detail .manual-panel{order:0;width:100%;padding:28px;border-radius:16px}
+.workflow-detail .optional-import{order:1;width:100%;border-top:1px solid #dce1dc;padding:18px 0}
+.optional-import>summary,.editor-range>summary{cursor:pointer;min-height:44px;font-size:13px;display:list-item;padding:10px 0;color:var(--accent)}
+.workflow-detail .dining-steps{font-weight:400;color:var(--muted)}
+.editor-palette{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:22px 0}
+.dining .status-brush{display:flex;gap:6px;align-items:center;justify-content:center;padding:10px 6px;border:1px solid transparent;font-size:12px;min-height:48px}
+.dining .status-brush[aria-pressed=true]{outline:2px solid var(--ink);outline-offset:2px;box-shadow:none}
+.dining .status-green{background:#dcefe3;color:#204c33}.dining .status-yellow{background:#fff0be;color:#725811}.dining .status-red{background:#f7dedb;color:#853c32}.dining .status-unknown{background:#eef0ec;color:#60695f}
+.editor-day{display:flex;gap:12px;align-items:end;margin:20px 0 8px}.editor-day label{flex:1;display:grid;gap:4px;font-size:11px;color:var(--muted)}
+.editor-day button{min-width:44px}
+.editor-hint{font-size:12px!important;color:var(--muted)}
+.availability-slots{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;max-height:440px;overflow:auto;padding:4px;overscroll-behavior:contain}
+.dining .availability-slot{display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:52px;padding:12px;border:1px solid #ffffff80;border-radius:8px;font-size:12px;font-variant-numeric:tabular-nums;touch-action:none;user-select:none}
+.availability-slot b{font-size:15px;font-weight:500}
+.editor-tools{display:flex;gap:8px;flex-wrap:wrap;margin-block:14px}.editor-tools button{font-size:12px;padding:8px 12px;background:transparent}
+.availability-summary{display:flex;flex-wrap:wrap;gap:10px 18px;border-top:1px solid #dce1dc;padding-top:18px;font-size:12px}
+.availability-summary>span{display:flex;align-items:center;gap:6px}.status-dot{display:inline-block;width:10px;height:10px;border:1px solid #0002;border-radius:50%}
+.draft-submit-actions{position:sticky;bottom:12px;display:flex;justify-content:flex-end;gap:10px;background:#fff;padding:14px 0 0;border-top:1px solid #e1e7eb;margin-top:22px}
+.workflow-detail .blank-confirm{margin-top:18px}.workflow-detail .blank-confirm>p{font-size:11px}.workflow-detail .blank-confirm>button{font-size:12px;background:transparent}
+@media(max-width:600px){.workflow-home,.workflow-detail{padding:14px 18px 40px}.workflow-heading{align-items:start;flex-direction:column;padding-top:28px;gap:14px}.workflow-heading .dining-primary{width:100%;justify-content:space-between}.workflow-path{gap:14px;flex-direction:column}.workflow-detail .manual-panel{padding:18px 12px}.editor-palette{gap:5px}.dining .status-brush{font-size:10px;gap:3px}.availability-slots{grid-template-columns:1fr;max-height:400px}.dining .availability-slot{font-size:13px}.workflow-home .dining-cards{grid-template-columns:minmax(0,1fr)}.draft-submit-actions{bottom:0;padding-bottom:10px}.draft-submit-actions button{flex:1}.gathering-filters{width:100%}}
+
+.reply-roster{margin:24px 0;max-width:760px}.reply-roster h2{display:flex;gap:12px;align-items:center;font-size:17px}.reply-roster h2 span{font-size:13px;font-weight:400;color:var(--muted)}
+.reply-roster ul,.candidate-roster{list-style:none;margin:0;padding:0}.reply-roster li,.candidate-roster li{display:flex;justify-content:space-between;gap:16px;padding:10px 0;border-bottom:1px solid #dce1dc;font-size:13px}.reply-roster li>span:last-child,.candidate-roster li>span:last-child{color:var(--muted)}
+.gathering-management{margin-block:20px}.gathering-management>details{border-block:1px solid #dce1dc;margin-block:16px;padding:12px 0}.gathering-management summary{cursor:pointer;min-height:44px;padding:10px 0;font-size:14px}.gathering-management form{margin-block:20px;max-width:760px}.gathering-management fieldset{border:0;padding:0}.dining .check-label{display:flex;align-items:center;gap:10px;font-size:13px}.check-label input{width:18px;height:18px}
+
+/* Quiet, half-hour timetable: status is conveyed visually, labels remain accessible. */
+.timetable-palette { display:flex; gap:14px; justify-content:flex-end; padding:8px 4px 20px; }
+.dining .timetable-swatch { width:28px; height:28px; min-height:28px; padding:0; border:1px solid rgba(36,64,51,.18); border-radius:50%; }
+.dining .timetable-swatch[aria-pressed="true"] { outline:2px solid #345c4c; outline-offset:4px; }
+.timetable-scroll { overflow-x:auto; padding:4px; }
+.timetable { display:grid; align-items:stretch; min-width:100%; }
+.timetable-row { display:contents; }
+.timetable-date { padding:0 8px 16px; text-align:center; font-size:13px; font-weight:500; }
+.timetable-time { font-size:11px; color:#788178; padding:0 10px 0 0; position:relative; top:-7px; text-align:right; font-variant-numeric:tabular-nums; }
+.dining .timetable-cell { height:32px; min-height:32px; padding:0; border:1px solid #e2e6df; border-radius:0; margin:0; touch-action:none; box-shadow:none; transition:background-color 100ms; }
+.dining .timetable-cell.status-unknown { background:transparent; }
+.dining .timetable-cell.status-green,.dining .timetable-swatch.status-green { background:#9ccbb0; }
+.dining .timetable-cell.status-yellow,.dining .timetable-swatch.status-yellow { background:#eed589; }
+.dining .timetable-cell.status-red,.dining .timetable-swatch.status-red { background:#dba39e; }
+.dining .timetable-swatch.status-unknown { background:transparent; }
+.dining .timetable-cell:focus-visible { outline:2px solid #345c4c; outline-offset:-3px; z-index:1; }
+.timetable-end { margin-top:0; }
+@media(prefers-reduced-motion:reduce) { .dining .timetable-cell { transition:none; } }
+
+/* Allvailable: a quiet workspace with one clear starting action. */
+body:has(.workflow-home) { background:#faf9f6; }
+.workflow-home { max-width:1080px; min-height:100svh; display:flex; flex-direction:column; padding:28px 48px 24px; }
+.workflow-home .dining-nav { border:0; padding:0 0 24px; }
+.workflow-home .dining-brand { font-size:23px; letter-spacing:-1px; font-weight:600; }
+.workflow-home .workflow-heading { padding:64px 0 32px; }
+.workflow-home .workflow-heading h1 { white-space:pre-line; margin:0; }
+.workflow-home .welcome-heading { align-items:flex-start; flex-direction:column; justify-content:center; gap:36px; flex:1; padding:90px 0 70px; }
+.workflow-home .welcome-heading h1 { font-size:clamp(48px,7.5vw,88px); line-height:1.04; letter-spacing:-.055em; font-weight:450; max-width:850px; }
+.workflow-home .dining-primary { border-radius:999px; padding:16px 24px; background:#294f41; color:#fffef8; font-size:14px; box-shadow:none; transition:background .18s,transform .18s; }
+.workflow-home .dining-primary:hover { background:#193e31; transform:translateY(-2px); }
+.workflow-home .dining-message { align-self:flex-start; max-width:100%; background:transparent; border:0; padding:0; margin:0 0 28px; font-size:12px; color:#7a7367; }
+.workflow-home .dining-message button { font-size:12px; border:0; padding:4px 8px; background:transparent; text-decoration:underline; }
+.workflow-home .dining-footer { margin-top:auto; padding-top:40px; border:0; font-size:11px; color:#81877d; }
+.workflow-home .dining-cards { display:flex; flex-direction:column; gap:0; }
+.workflow-home .dining-meal { background:transparent; border:0; border-bottom:1px solid #e0e4dc; border-radius:0; padding:26px 0; }
+.workflow-home .dining-meal:hover { background:#f0f2ec; box-shadow:none; transform:none; }
+.workflow-home .dining-empty { background:transparent; border:0; padding:72px 0; color:#838a7f; text-align:left; }
+@media(max-width:600px) {
+ .workflow-home { padding:20px 24px 24px; }
+ .workflow-home .welcome-heading { padding:64px 0; gap:30px; }
+ .workflow-home .welcome-heading h1 { font-size:clamp(44px,12vw,64px); }
+ .workflow-home .workflow-heading .dining-primary { width:auto; gap:24px; }
+ .workflow-home .dining-nav { padding-bottom:12px; }
+}
+@media(prefers-reduced-motion:reduce) { .workflow-home .dining-primary { transition:none; } .workflow-home .dining-primary:hover { transform:none; } }
+
+.workflow-home .home-wordmark { font-family: Georgia, "Times New Roman", serif; font-style: italic; font-weight: 400; letter-spacing: -.045em; }
+
+/* Editorial layout shared by the landing page and the private scheduling workspace. */
+body:has(.workflow-home),body:has(.workflow-detail) { background:#f8f7f2; }
+.workflow-home,.workflow-detail { --ink:#263e34; --muted:#74796f; --accent:#315c48; color:var(--ink); }
+.workflow-home { max-width:1440px; padding:28px clamp(24px,7vw,112px) 26px; }
+.workflow-home .dining-nav { min-height:56px; padding:0; }
+.workflow-home .welcome-heading { display:grid; grid-template-columns:minmax(0,1fr) auto; grid-template-rows:1fr auto; align-content:center; align-items:center; column-gap:32px; row-gap:48px; padding:clamp(72px,12vh,140px) 0 72px; }
+.workflow-home .welcome-heading h1 { grid-column:1 / -1; font-size:clamp(64px,10.5vw,148px); line-height:.98; max-width:none; letter-spacing:-.065em; font-weight:400; }
+.workflow-home .welcome-heading h1>span:first-child { display:inline-block; }
+.workflow-home .home-wordmark { display:inline-block; padding-left:clamp(24px,8vw,112px); margin-top:12px; font-family:Georgia,"Times New Roman",serif; font-weight:400; letter-spacing:-.065em; color:#51705a; transform:translate(var(--pointer-x,0px),var(--pointer-y,0px)); transition:transform .5s ease-out; }
+.workflow-home .welcome-heading>.dining-primary { grid-column:2; justify-self:end; align-self:end; }
+.workflow-home .dining-primary { display:inline-flex; align-items:center; justify-content:space-between; gap:40px; min-height:56px; border:0; border-radius:6px; padding:16px 22px; background:var(--ink); }
+.workflow-home .dining-primary svg { transition:transform .2s; }
+.workflow-home .dining-primary:hover svg { transform:translate(2px,-2px); }
+.workflow-home .dining-message { margin:0 0 18px; font-size:12px; }
+.workflow-home .dining-footer { display:flex; gap:12px; padding-top:24px; margin-top:auto; align-items:center; }
+.workflow-home .workflow-heading:not(.welcome-heading) { padding:64px 0 36px; border-bottom:1px solid #dce0d5; }
+.workflow-home .dining-list { padding-top:24px; }
+.workflow-home .dining-list>.dining-actions { gap:10px; }
+.workflow-home .gathering-filters button { border-radius:0; padding:10px 14px; }
+.workflow-home .gathering-filters button[aria-pressed=true] { background:transparent; border-bottom:2px solid var(--ink); }
+.workflow-home .dining-meal { display:grid; grid-template-columns: minmax(0,1fr) auto; gap:4px 24px; padding:28px 12px; }
+.workflow-home .dining-meal h3 { grid-column:1; margin:8px 0; font-size:28px; }
+.workflow-home .dining-meal .dining-badge { justify-self:start; font-size:11px; background:#e6ebdf; }
+.workflow-home .dining-meal .gathering-role { justify-self:end; margin:0; }
+.workflow-home .dining-meal p { margin:2px 0; font-size:13px; }
+.workflow-home .dining-meal>span:last-child { grid-column:2; justify-self:end; align-self:end; }
+.workflow-home .dining-panel { padding:32px 0; border:0; border-radius:0; background:transparent; }
+.workflow-detail { max-width:1040px; padding:28px clamp(20px,5vw,64px) 64px; }
+.workflow-detail .dining-nav { border:0; padding:0; margin-bottom:56px; min-height:44px; }
+.workflow-detail h1,.workflow-detail .dining-detail>h1 { font-size:clamp(32px,5vw,56px); font-weight:400; letter-spacing:-.045em; line-height:1.1; margin:0 0 24px; }
+.workflow-detail .dining-detail>p { color:var(--muted); font-size:13px; max-width:620px; }
+.workflow-detail .dining-workspace { max-width:none; margin:32px 0; }
+.workflow-detail .manual-panel { border:0; border-radius:0; padding:24px 0; background:transparent; }
+.workflow-detail .draft-submit-actions { background:#f8f7f2; }
+.workflow-detail .timetable-editor { margin-top:32px; }
+.workflow-detail .timetable-date { padding-bottom:20px; font-size:12px; color:var(--ink); }
+.workflow-detail .timetable-cell { height:36px; min-height:36px; }
+.workflow-detail .timetable-cell.status-unknown:hover:not(:disabled) { background:#e8ece2; }
+.workflow-detail .timetable-palette { gap:18px; padding-bottom:28px; }
+.workflow-detail .optional-import { border-color:#dce0d5; }
+.workflow-detail .dining-detail article { border:0; border-top:1px solid #dce0d5; border-radius:0; background:transparent; padding:24px 0; }
+@media(max-width:600px) {
+ .workflow-home { padding:20px 24px 24px; }
+ .workflow-home .welcome-heading { grid-template-columns:1fr; grid-template-rows:auto auto; gap:48px; padding:76px 0 64px; align-content:center; }
+ .workflow-home .welcome-heading h1 { font-size:clamp(55px,14.5vw,86px); }
+ .workflow-home .home-wordmark { padding-left:12px; margin-top:12px; }
+ .workflow-home .welcome-heading>.dining-primary { grid-column:1; justify-self:start; width:auto; }
+ .workflow-home .dining-meal { padding-inline:0; gap:4px 12px; }
+ .workflow-detail { padding:20px 20px 40px; }
+ .workflow-detail .dining-nav { margin-bottom:40px; }
+ .workflow-detail .manual-panel { padding:12px 0; }
+}
+@media(hover:none),(prefers-reduced-motion:reduce) {
+ .workflow-home .home-wordmark { transform:none; transition:none; }
+ .workflow-home .dining-primary svg { transition:none; transform:none; }
+}
+.home-entry-actions { display:flex; align-items:center; gap:12px; }
+.workflow-home .welcome-heading>.home-entry-actions { grid-column:2; justify-self:end; }
+.home-join { display:inline-flex; align-items:center; justify-content:space-between; gap:40px; min-height:56px; padding:16px 22px; border:1px solid #b9c5b7; border-radius:6px; text-decoration:none; font-size:14px; }
+.home-join:hover { background:#e8ece2; }
+.join-code-page form { display:flex; flex-direction:column; align-items:flex-start; gap:20px; max-width:360px; margin-top:48px; }
+.join-code-page label { font-size:13px; color:var(--muted); }
+.dining .join-code-input { width:100%; font-size:36px; letter-spacing:.25em; font-variant-numeric:tabular-nums; padding:16px; background:transparent; border:0; border-bottom:1px solid #aebba9; border-radius:0; }
+.gathering-join-code { font-size:26px; letter-spacing:.15em; font-variant-numeric:tabular-nums; margin-right:12px; }
+@media(max-width:600px){.workflow-home .welcome-heading>.home-entry-actions {grid-column:1;justify-self:start;flex-wrap:wrap;}.home-join {gap:24px;}}
+
+.plan-assistant{margin:1.5rem 0 2rem;padding-bottom:1.5rem;border-bottom:1px solid var(--line,#d8ded8)}
+.plan-assistant h3{font-size:1.1rem;margin:0 0 .5rem}
+.plan-assistant label{display:block}
+.plan-assistant textarea{display:block;box-sizing:border-box;width:100%;font:inherit;line-height:1.5;border:1px solid #cdd5ce;border-radius:12px;background:#fff;padding:14px;margin:10px 0 14px;resize:vertical}
+.plan-assistant [role=status]{line-height:1.5;margin-bottom:0}
