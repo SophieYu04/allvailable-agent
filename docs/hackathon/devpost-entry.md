@@ -33,7 +33,7 @@ The server calls Nebius Token Factory at runtime. **NVIDIA open model:** `nvidia
 ## Links
 
 - Working demo: **Pending public deployment and hosted acceptance**
-- Public source repository: **Pending publication; CLI authenticated**
+- Public source repository: https://github.com/SophieYu04/allvailable-agent
 - Public YouTube demo (under 3 minutes): **Pending recording and upload**
 - Open-source license: MIT (`LICENSE` at repository root)
 - Nebius/NVIDIA tool feedback: **Complete after real use; add reproducible observations and measurements**
@@ -44,7 +44,7 @@ The server calls Nebius Token Factory at runtime. **NVIDIA open model:** `nvidia
 - [x] At least one NVIDIA open-source model used in that working project; exact model ID is in the README and this entry.
 - [ ] Every described AI capability appears in the public demo and has been human-reviewed.
 - [ ] Working public demo URL; three real participants can join and complete the phone flow.
-- [ ] Public repository opens without authentication and shows the MIT license at the root; README setup works from a clean checkout.
+- [x] Public repository opens without authentication and shows the MIT license at the root; clean-source install, tests and production build pass. Live backend setup still requires environment credentials.
 - [ ] Public YouTube video is under three minutes, shows the project working on its intended device, and includes audio explaining Token Factory and the NVIDIA model. The continuous 1:05 module walkthrough in `submission.md` is a deliberate evidence choice; the explicit one-minute clause applies to the Physical AI track.
 - [ ] Tool feedback is based on actual use, not a template or assumption.
 - [ ] The explanation of significant hackathon-period changes matches the retained baseline and verified Git history.

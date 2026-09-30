@@ -4,7 +4,7 @@
 
 A mobile-first web app for the Nebius × NVIDIA Hackathon, targeting **Best Apps and Agents**. Each friend joins through a link or six-digit code, reviews their own availability, and explicitly submits it. Deterministic code finds shared half-hour intervals.
 
-**Status (September 30, 2026):** real Nebius inference is connected to the web app. Natural-language invitation drafts use NVIDIA Nemotron Super; screenshot transcription and review use MiniCPM plus Nemotron. The local web flow and three-account backend acceptance are verified. Public deployment, physical-phone acceptance, source publication and the final video remain release gates.
+**Status (September 30, 2026):** real Nebius inference is connected to the web app. Natural-language invitation drafts use NVIDIA Nemotron Super; screenshot transcription and review use MiniCPM plus Nemotron. The local web flow and three-account backend acceptance are verified. Public deployment, physical-phone acceptance and the final video remain release gates. [Public source](https://github.com/SophieYu04/allvailable-agent) is available under MIT.
 
 ## The core flow
 
@@ -55,7 +55,7 @@ Web audio stays unavailable until a supported transcription endpoint is configur
 
 Follow the [hackathon setup guide](docs/hackathon/README.md) and [.env.example](.env.example). Copy the example only when `.env.local` does not already exist; preserve existing credentials. Never commit or paste secret values.
 
-The dedicated backend already has 21 migrations and its calculation function deployed. Do not reapply setup to an unrelated Supabase account. Google sign-in has passed a local round trip. Deployment awaits the scoped Cloudflare authorization; GitHub CLI authentication is ready for source publication.
+The dedicated backend already has 21 migrations and its calculation function deployed. Do not reapply setup to an unrelated Supabase account. Google sign-in has passed a local round trip. Deployment awaits the scoped Cloudflare authorization; The MIT-licensed source is published at https://github.com/SophieYu04/allvailable-agent.
 
 ## Verification and evidence
 
@@ -76,4 +76,4 @@ See [current implementation status](docs/hackathon/implementation-status.md), [l
 - [Earlier project setup and broader features](docs/legacy-project-guide.md)
 - [Product decisions](docs/product-decisions.md) and [iOS speech/import work](docs/voice-calendar-import.md)
 
-Licensed under [MIT](LICENSE). The working tree contains unpublished work; no public demo or repository URL is claimed here.
+Licensed under [MIT](LICENSE). [Public repository](https://github.com/SophieYu04/allvailable-agent). Public web deployment is awaiting Cloudflare consent.

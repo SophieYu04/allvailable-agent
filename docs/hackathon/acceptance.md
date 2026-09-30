@@ -8,7 +8,7 @@
 - Live inference: PASS for natural-language invitation draft and three-row Chinese screenshot processing. Dedicated server-only key configured; exact models and measured results are in [live evidence](live-evidence-20260930.md). Browser audio is not configured.
 - Dedicated backend: PASS for synthetic three-account flow, rerun 2026-09-30; 21 migrations and calculation function deployed, temporary fixtures cleaned. Public web demo: pending Cloudflare CLI authorization.
 - Safari/Chrome real-device multi-user acceptance: NOT RUN.
-- Public repo, video, Devpost: NOT SUBMITTED.
+- Public MIT source: https://github.com/SophieYu04/allvailable-agent (anonymous access verified). Video and Devpost submission are pending.
 
 ## Three-person case (execute with real accounts)
 

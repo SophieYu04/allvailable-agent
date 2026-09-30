@@ -39,9 +39,13 @@ A development-only 390px iframe harness runs the real authenticated app for resp
 ## Remaining submission gates
 
 - Public HTTPS deployment and production OAuth verification.
-- Public source repository with MIT license and fresh setup verification.
+- Public source is available at https://github.com/SophieYu04/allvailable-agent, with MIT license and anonymous access verified. Clean-install build verification is recorded below.
 - Public YouTube demonstration under three minutes, with English narration/captions.
 - Physical-phone acceptance and participant eligibility confirmation.
 - Credit-only API availability through December 15 judging. The account’s stop-after-trial preference protects the no-card-charge requirement but can stop inference before judging; do not enable paid usage to bypass this.
 
 The [official rules](https://nebiusglobalaihackathon.devpost.com/rules) require runtime Nebius usage plus an NVIDIA open model, a working submission, accessible source, demo video and actual tool feedback. This implementation supplies the runtime integration; the remaining access and submission gates still need completion.
+
+## Release reproduction
+
+The public-source snapshot was installed with `npm ci` without the owner’s `.env.local` or hosting metadata. All 123 tests passed and the production build completed after making local Sites metadata optional. The production server returned HTTP 200 for `/` and HTTP 404 for both `/preview` and `/preview/live`. The real authenticated app was also inspected in a 390px iframe: document width and scroll width were both 390px, and the saved 19:00, 19:30 and 20:00 busy cells survived reload. This is responsive browser evidence, not a physical-phone test.
