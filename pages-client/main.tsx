@@ -13,7 +13,9 @@ import '@/app/globals.css';
 
 function App() {
   const path = usePathname();
-  if (path === '/') return <DiningHome/>;
+  if (path === '/') return <DiningHome key={path}/>;
+  if (path === '/history') return <DiningHome key={path} view="history"/>;
+  if (path === '/hosting') return <DiningHome key={path} view="hosting"/>;
   if (path === '/login') return <Login/>;
   if (path === '/join') return <JoinByCode initialCode={new URLSearchParams(routeSearch()).get('code') || ''}/>;
   if (path === '/privacy') return <Privacy/>;

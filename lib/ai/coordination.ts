@@ -6,7 +6,7 @@ export const coordinationDraftSchema = z.object({ name: z.string().max(80).nulla
 const draftSchema = coordinationDraftSchema;
 export function validateProposal(raw: unknown) {
   const input = draftSchema.parse(raw);
-  const parsed = gatheringInputSchema.safeParse({ ...input, recommendationCount: 3 });
+  const parsed = gatheringInputSchema.safeParse({ ...input, duration: input.duration ?? undefined, recommendationCount: 3 });
   const labels: Record<string,string> = {name:'邀約名稱',dateStart:'開始日期',dateEnd:'結束日期',dailyStart:'每日開始時間',dailyEnd:'每日結束時間',duration:'活動長度',deadline:'回覆截止'};
   return { input, questions: parsed.success ? [] : [...new Set(parsed.error.issues.map((issue) => `請確認${labels[String(issue.path[0])] ?? "條件"}：${issue.code === "invalid_type" ? "尚未提供或無法確定" : issue.message}`))] };
 }

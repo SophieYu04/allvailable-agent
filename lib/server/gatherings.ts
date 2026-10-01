@@ -7,7 +7,7 @@ export const gatheringInputSchema = z.object({
   dateEnd: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   dailyStart: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/),
   dailyEnd: z.string().regex(/^(?:(?:[01]\d|2[0-3]):[0-5]\d|24:00)$/),
-  duration: z.number().int().min(30).max(240).multipleOf(30),
+  duration: z.number().int().min(30).max(240).multipleOf(30).default(30),
   deadline: z.string().datetime({ offset: true }),
   saveAsDraft: z.boolean().default(false),
   hostParticipates: z.boolean().default(true),

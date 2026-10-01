@@ -13,6 +13,10 @@ const base = {
 };
 
 describe("gatheringInputSchema", () => {
+  it("allows omitted duration and uses the disclosed half-hour minimum", () => {
+    const result = gatheringInputSchema.parse({ ...base, duration: undefined });
+    expect(result.duration).toBe(30);
+  });
   it("accepts a 14-day inclusive range and 24:00 end", () => {
     expect(gatheringInputSchema.safeParse(base).success).toBe(true);
   });

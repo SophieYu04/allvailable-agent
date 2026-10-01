@@ -8,7 +8,7 @@ import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { useLanguage } from "./Language";
 import "./navigation-menu.css";
 
-export default function NavigationMenu({ accountEnabled = true }: { accountEnabled?: boolean }) {
+export default function NavigationMenu({ accountEnabled = true, onRefresh, refreshDisabled = false }: { accountEnabled?: boolean; onRefresh?: () => void; refreshDisabled?: boolean }) {
   const { language, setLanguage, t } = useLanguage();
   const router = useRouter();
   const pathname = usePathname();
@@ -47,6 +47,13 @@ export default function NavigationMenu({ accountEnabled = true }: { accountEnabl
   return <div className="navigation-menu" ref={root}>
     <button ref={trigger} type="button" className="navigation-toggle" aria-label={t("選單", "Menu")} aria-expanded={open} aria-controls="account-navigation" onClick={() => setOpen(value => !value)}><Menu size={22} aria-hidden="true"/></button>
     {open && <nav id="account-navigation" className="navigation-panel" aria-label={t("帳號與語言", "Account and language")}>
+      {accountEnabled && <>
+        <Link href="/" onClick={()=>setOpen(false)}>{t('接下來的聚會','Upcoming')}</Link>
+        <Link href="/hosting" onClick={()=>setOpen(false)}>{t('我發起的','Hosting')}</Link>
+        <Link href="/history" onClick={()=>setOpen(false)}>{t('歷史聚會','History')}</Link>
+        <button type="button" disabled={refreshDisabled} onClick={()=>{setOpen(false);if(onRefresh)onRefresh();else router.refresh();}}>{t('重新整理','Refresh')}</button>
+        <hr/>
+      </>}
       <button type="button" onClick={() => { setLanguage(language === "en" ? "zh" : "en"); setOpen(false); }}>{language === "en" ? "繁體中文" : "English"}</button>
       {accountEnabled && (signedIn ? <button type="button" disabled={busy} onClick={signOut}>{t("登出", "Sign out")}</button> : <Link href={`/login?next=${encodeURIComponent(pathname === "/login" ? "/" : pathname)}`} onClick={() => setOpen(false)}>{t("登入", "Sign in")}</Link>)}
       {error && <p role="alert">{t("登出失敗，請重試", "Sign out failed. Retry.")}</p>}
