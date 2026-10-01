@@ -4,7 +4,7 @@
 
 Allvailable is a scheduling agent for groups. Describe a plan, review your availability, and find a time everyone can make—without sharing private event titles or calendar screenshots with friends.
 
-[Open app](https://sophieyu04.github.io/allvailable-agent/) · [Setup guide](docs/hackathon/README.md) · [Live AI evidence](docs/hackathon/live-evidence-20260930.md)
+[Open app](https://sophieyu04.github.io/allvailable-agent/) · [Setup guide](docs/hackathon/README.md) · [Verified deployment](docs/hackathon/deployment-20261001.md)
 
 ## How it works
 
