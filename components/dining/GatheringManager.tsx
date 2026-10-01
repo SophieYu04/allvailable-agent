@@ -1,4 +1,5 @@
 "use client";
+import { apiFetch } from '@/lib/api-fetch';
 import { useRef, useState, type FormEvent } from "react";
 import { useLanguage } from "./Language";
 
@@ -23,7 +24,7 @@ export default function GatheringManager({ gathering:g, reload, onLeave, host, e
     const content=JSON.stringify({action,input,expectedRevision:g.revision});
     if(key.current?.body!==content)key.current={body:content,value:crypto.randomUUID()};
     try{
-      const response=await fetch('/api/v1/coordination/'+g.id+'/manage',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...JSON.parse(content),idempotencyKey:key.current.value})});
+      const response=await apiFetch('/api/v1/coordination/'+g.id+'/manage',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...JSON.parse(content),idempotencyKey:key.current.value})});
       const result=await response.json() as {error?:{message?:string}};
       if(!response.ok)throw new Error(result.error?.message??t('操作失敗，輸入已保留','Could not save. Your input is retained.'));
       key.current=null;

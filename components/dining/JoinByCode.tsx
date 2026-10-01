@@ -1,4 +1,5 @@
 "use client";
+import { apiFetch } from '@/lib/api-fetch';
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -12,7 +13,7 @@ export default function JoinByCode({ initialCode }: { initialCode: string }) {
  async function join(event:FormEvent) {
   event.preventDefault(); if(busy)return; setBusy(true);setError('');
   try {
-   const response=await fetch('/api/v1/join-code',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code})});
+   const response=await apiFetch('/api/v1/join-code',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code})});
    if(response.status===401){router.push('/login?next='+encodeURIComponent('/join?code='+code));return;}
    const data=await response.json() as {token?:string};
    if(!response.ok){setError(response.status===429?t('請在十分鐘後重試','Try again in 10 minutes.'):response.status===404?t('找不到邀約，請確認編號','No gathering found. Check the code.'):t('目前無法加入，請稍後重試','Joining is unavailable. Try again shortly.'));return;}

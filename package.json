@@ -16,7 +16,9 @@
     "test:watch": "vitest",
     "agent:demo": "node scripts/planning-agent.mjs --demo",
     "agent:live-demo": "node scripts/planning-agent.mjs --live-demo",
-    "test:database": "node scripts/test-database.mjs"
+    "test:database": "node scripts/test-database.mjs",
+    "build:pages": "vite build --config vite.pages.config.ts",
+    "preview:pages": "vite preview --config vite.pages.config.ts --host 127.0.0.1"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

@@ -1,4 +1,5 @@
 "use client";
+import { apiFetch } from '@/lib/api-fetch';
 import { useRef, useState } from 'react';
 import { useLanguage } from './Language';
 
@@ -17,7 +18,7 @@ export default function PlanAssistant({ onDraft, disabled, onBusyChange }: { onB
     pending.current = true; setBusy(true); onBusyChange(true); setMessage('');
     if (request.current?.text !== text) request.current = { text, key: crypto.randomUUID() };
     try {
-      const response = await fetch('/api/v1/coordination/proposals', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, requestKey: request.current!.key }) });
+      const response = await apiFetch('/api/v1/coordination/proposals', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, requestKey: request.current!.key }) });
       const result = await response.json() as { proposal?: { input: PlanDraft; questions?: string[] } };
       if (!response.ok || !result.proposal?.input) {
         if (response.status === 429) throw new Error(t('今天的 AI 額度已用完，仍可用下方表單建立。', 'Today’s AI limit is reached. You can still use the form below.'));

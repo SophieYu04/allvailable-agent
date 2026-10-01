@@ -1,5 +1,6 @@
 "use client";
 
+import { loginRedirect, routeSearch, safeAppPath } from '@/lib/client-runtime';
 import { ArrowLeft, CheckCircle2, LockKeyhole, Sparkles } from "lucide-react";
 import { useState } from "react";
 import Link from "next/link";
@@ -16,9 +17,9 @@ export default function LoginPage() {
     const client = getSupabaseBrowserClient();
     if (!client) { setMessage(t("目前尚未連接登入服務，請稍後再試。", "Sign-in is not configured yet. Please try later.")); return; }
     setLoading(true);
-    const next = new URLSearchParams(window.location.search).get("next") ?? "/";
-    const safeNext = next.startsWith("/") && !next.startsWith("//") && !next.includes("\\") ? next : "/";
-    const { error } = await client.auth.signInWithOAuth({ provider: "google", options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(safeNext)}` } });
+    const next = new URLSearchParams(routeSearch()).get("next") ?? "/";
+    const safeNext = safeAppPath(next);
+    const { error } = await client.auth.signInWithOAuth({ provider: "google", options: { redirectTo: loginRedirect(safeNext) } });
     if (error) { setMessage(error.message); setLoading(false); }
   }
 

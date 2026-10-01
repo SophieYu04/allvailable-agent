@@ -1,4 +1,6 @@
 "use client";
+import { appHref } from '@/lib/client-runtime';
+import { apiFetch } from '@/lib/api-fetch';
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import "./dining.css";
@@ -28,7 +30,7 @@ const stamp = (value: string) => new Intl.DateTimeFormat("zh-TW", { timeZone: "A
 class DiningError extends Error { constructor(message:string, readonly status:number){super(message);} }
 
 async function api(path: string, method = "GET", body?: unknown) {
-  const response = await fetch(path, { method, headers: { "Content-Type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body) });
+  const response = await apiFetch(path, { method, headers: { "Content-Type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body) });
   const data = await response.json() as { error?: { message?: string }; gathering: Gathering; version: string; draftVersion: string; changes: Array<{key:string;before:SlotStatus;after:SlotStatus}>; cells: Cells };
   if (!response.ok) throw new DiningError(data.error?.message ?? "操作失敗，請重試", response.status);
   return data;
@@ -67,7 +69,7 @@ export default function DiningDetail({ token, gatheringId }: { token?: string; g
     const id = auth?.data.user?.id ?? null;
     setUserId(id);
     if (!id) { setJoined(false); setCells({}); return; }
-    const response = await fetch(`/api/v1/coordination/${summary.gathering.id}`);
+    const response = await apiFetch(`/api/v1/coordination/${summary.gathering.id}`);
     if (epoch !== loadEpoch.current) return;
     if (response.status === 404 || response.status === 403) { setJoined(false); return; }
     if (!response.ok) throw new Error(t("邀約載入失敗，請重試", "Unable to load invitation. Retry."));
@@ -156,7 +158,7 @@ export default function DiningDetail({ token, gatheringId }: { token?: string; g
       <button disabled={working || importActive || gathering.status==='draft'} onClick={() => act(async () => {
         const invite = gathering.invite_token ?? token;
         if (!invite) throw new Error(t("找不到分享連結，請重新載入", "Invitation link missing. Reload."));
-        const url = `${location.origin}/join/${encodeURIComponent(invite)}`;
+        const url = new URL(appHref(`/join/${encodeURIComponent(invite)}`), location.origin).href;
         if (navigator.share) await navigator.share({title:gathering.name,url});
         else { await navigator.clipboard.writeText(url); setMessage(t("邀請連結已複製", "Invitation link copied.")); }
       })}>{t("分享飯局", "Share invitation")}</button>

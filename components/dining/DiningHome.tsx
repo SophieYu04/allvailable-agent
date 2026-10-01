@@ -1,4 +1,5 @@
 "use client";
+import { apiFetch } from '@/lib/api-fetch';
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import NavigationMenu from "./NavigationMenu";
 import PlanAssistant, { type PlanDraft } from './PlanAssistant';
@@ -41,7 +42,7 @@ export default function DiningHome(){
       if(error||!data.user){setUser(null);setUserId(null);setMeals([]);return;}
       setUserId(data.user.id);
       setUser(data.user.email??t("已登入", "Signed in"));
-      const response=await fetch('/api/v1/coordination',{cache:'no-store'});
+      const response=await apiFetch('/api/v1/coordination',{cache:'no-store'});
       const result=await response.json() as {error?:{message?:string};gatherings:Meal[];gathering:Meal};
       if(epoch!==generation.current)return;
       if(!response.ok)throw new Error(result.error?.message??t("飯局載入失敗", "Unable to load invitations"));
@@ -64,7 +65,7 @@ export default function DiningHome(){
     submitting.current=true;setBusy(true);setMessage('');
     requestKey.current??=crypto.randomUUID();
     try{
-      const response=await fetch('/api/v1/coordination',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:form.get('name'),dateStart:form.get('start'),dateEnd:form.get('end'),dailyStart:form.get('from'),dailyEnd:form.get('to'),duration:Number(form.get('duration')),deadline:`${form.get('deadline')}:00+08:00`,recommendationCount:3,saveAsDraft:true,hostParticipates:form.has('participates'),conditionsPublic:form.has('public'),idempotencyKey:requestKey.current})});
+      const response=await apiFetch('/api/v1/coordination',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:form.get('name'),dateStart:form.get('start'),dateEnd:form.get('end'),dailyStart:form.get('from'),dailyEnd:form.get('to'),duration:Number(form.get('duration')),deadline:`${form.get('deadline')}:00+08:00`,recommendationCount:3,saveAsDraft:true,hostParticipates:form.has('participates'),conditionsPublic:form.has('public'),idempotencyKey:requestKey.current})});
       const result=await response.json() as {error?:{message?:string};gatherings:Meal[];gathering:Meal};
       if(!response.ok)throw new Error(result.error?.message??t("建立失敗，填寫已保留", "Creation failed. Your input is retained."));
       router.push(`/gatherings/${result.gathering.id}`);
