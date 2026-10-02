@@ -45,3 +45,9 @@ it('a stale stop callback cannot cancel the timer of a newer recording', async (
   await capture.start(done, vi.fn()); oldStop?.(); vi.advanceTimersByTime(60000);
   expect(done).toHaveBeenCalledTimes(1); expect(second.track.stop).toHaveBeenCalled();
 });
+it('observes the existing recording stream and stops metering on stop and cancel',async()=>{
+ const f=fake(),cleanup=vi.fn(),level=vi.fn();const observe=vi.fn((stream:MediaStream,onLevel:(n:number)=>void)=>{expect(stream).toBe(f.stream);onLevel(.6);return cleanup;});
+ const capture=createAudioCapture({acquire:async()=>f.stream,create:f.create,observe});
+ await capture.start(vi.fn(),vi.fn(),level);expect(level).toHaveBeenCalledWith(.6);capture.stop();expect(cleanup).toHaveBeenCalledTimes(1);
+ await capture.start(vi.fn(),vi.fn(),level);capture.cancel();expect(cleanup).toHaveBeenCalledTimes(2);
+});

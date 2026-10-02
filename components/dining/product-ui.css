@@ -186,3 +186,16 @@ main.dining[tabindex="-1"]:focus{outline:none}
  .dining .review-card-actions{gap:6px}
  .dining .review-card-actions button{min-width:0;padding:10px 6px}
 }
+
+.voice-level-meter{display:flex;align-items:center;gap:12px;min-height:44px;color:#315d48;margin-bottom:10px}
+.voice-level-bars{display:flex;align-items:center;gap:4px;height:28px;flex:1;max-width:300px}
+.voice-level-bars span{flex:1;min-width:3px;border-radius:3px;background:#d3dcd5}
+.voice-level-bars span.is-active{background:#43815c}
+.dining .voice-language-select{min-width:92px;min-height:48px;border:1px solid #bdcec2;border-radius:12px;background:#fff;color:var(--ink);padding:8px;font-size:16px}
+.dining .import-compact .voice-entry{display:flex;flex-direction:row;gap:8px}
+.dining .import-compact .voice-entry .upload-tile{flex:1}
+
+.import-switch-dialog { position: fixed; inset: 50% auto auto 50%; transform: translate(-50%, -50%); z-index: 100; width: min(420px, calc(100vw - 32px)); padding: 24px; border: 1px solid var(--dining-border, #d8ddd6); border-radius: 16px; background: #fff; margin: 0; }
+.import-switch-dialog h3 { margin: 0 0 20px; }
+
+.import-switch-dialog::backdrop { background: #0005; }

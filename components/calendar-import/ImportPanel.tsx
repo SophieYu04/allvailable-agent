@@ -5,6 +5,7 @@ import { browserImportTransport, type ImportTransport, type ImportData, type Imp
 import {readCalendarGeometry} from '@/lib/calendar/image-geometry';
 import {createLiveVoiceClient} from '@/lib/calendar/live-voice-client';
 import SwipeReviewCard from './SwipeReviewCard';
+import VoiceLevelMeter from './VoiceLevelMeter';
 import { startLiveSpeech } from '@/lib/calendar/live-speech';
 import { buildPreview } from '@/lib/calendar/import-preview';
 import { createAudioCapture } from '@/lib/calendar/audio-capture';
@@ -14,6 +15,12 @@ type Props = { dailyStart?: string; dailyEnd?: string; onCardApplied?: (cells:Ce
 export default function ImportPanel({ dailyStart, dailyEnd, onCardApplied, compact = false, onManualEntry, transport = browserImportTransport, sampleUploadLabel, gatheringId, dateStart, dateEnd, draftVersion = '1', personalVersion = '1', currentCells = {}, onApplied, beforePreview, onActivity }: Props) {
   const { t, language } = useLanguage();
   const [data, setData] = useState<ImportData | null>(null);
+  type Method = 'screenshot' | 'voice' | 'manual';
+  type SavedInput = { data: ImportData|null; clip: {blob:Blob;mime:string;questionId?:string}|null; transcript:string; pending:{form:FormData;key:string}|null; answers:Record<string,string> };
+  const [switchTo,setSwitchTo]=useState<Method|null>(null);
+  const [savedInputs,setSavedInputs]=useState<SavedInput[]>([]);
+  const fileInput=useRef<HTMLInputElement|null>(null);
+  const afterCapture=useRef<((clip:{blob:Blob;mime:string;questionId?:string})=>void)|null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [canRetry, setCanRetry] = useState(false);
@@ -23,6 +30,9 @@ export default function ImportPanel({ dailyStart, dailyEnd, onCardApplied, compa
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [recording, setRecording] = useState(false);
   const [liveTranscript, setLiveTranscript] = useState('');
+  const [voiceLanguage,setVoiceLanguage]=useState('zh-TW');
+  const [audioLevel,setAudioLevel]=useState(0);
+  useEffect(()=>{const timer=setTimeout(()=>{try{const saved=localStorage.getItem('allvailable.voiceLanguage');if(saved==='zh-TW'||saved==='en-US')setVoiceLanguage(saved);}catch{}},0);return()=>clearTimeout(timer);},[]);
   const [liveMode,setLiveMode]=useState(false);
   const [liveBusy,setLiveBusy]=useState(false);
   const liveGeneration=useRef(0);
@@ -54,7 +64,7 @@ export default function ImportPanel({ dailyStart, dailyEnd, onCardApplied, compa
   const interactionLocked = busy || liveBusy || (recording && !liveMode) || captureStarting || Boolean(recordedClip);
   const status = (s: string) => ({ green: t('可以', 'Available'), red: t('忙碌', 'Busy'), yellow: t('待確認', 'Tentative'), unknown: t('未填', 'Unknown') }[s] ?? s);
   useEffect(() => () => onActivity?.(false), [onActivity]);
-  useEffect(() => { onActivity?.(busy || recording || captureStarting || Boolean(data) || Boolean(recordedClip)); }, [busy, recording, captureStarting, data, recordedClip, onActivity]);
+  useEffect(() => { onActivity?.(busy || recording || captureStarting || Boolean(data) || Boolean(recordedClip) || savedInputs.length>0); }, [busy, recording, captureStarting, data, recordedClip, savedInputs.length, onActivity]);
   useEffect(() => {
     alive.current = true;
     const epochRef = operationEpoch;
@@ -113,13 +123,13 @@ export default function ImportPanel({ dailyStart, dailyEnd, onCardApplied, compa
     pending.current = null; setCanRetry(false);
   }
   function cancelRecording() { ++liveGeneration.current;mutex.current=false;setLiveBusy(false);liveClient.current?.cancel();liveClient.current=null;setLiveMode(false);const current=dataRef.current;if(current?.extraction.liveVoice){void transport(`/api/calendar-imports/${current.importId}`,{method:'DELETE'});dataRef.current=null;setData(null);}capture.current?.cancel(); speech.current?.stop(); speech.current=null; confirmOnStop.current=false; setRecordedClip(null); setLiveTranscript(''); setRecording(false); setCaptureStarting(false); setRecordingQuestion(undefined); }
-  async function record(questionId?: string) {
+  async function record(questionId?: string, fresh=false) {
     if (mutex.current) return;
-    if (recording) { if (recordingQuestion === questionId) capture.current?.stop(); return; }
+    if (recording && !fresh) { if (recordingQuestion === questionId) capture.current?.stop(); return; }
     if (capture.current?.isActive()) return;
     if (!webAudioAvailable) { setError(t('網頁語音尚未設定，請使用文字。', 'Web voice is not configured. Enter text instead.')); return; }
     capture.current ??= createAudioCapture();
-    setCaptureStarting(true); setRecordingQuestion(questionId); setError(''); setLiveTranscript(''); setCaptionUnavailable(false); setRecordedClip(null); confirmOnStop.current=false;transcriptRef.current='';
+    setAudioLevel(0); setCaptureStarting(true); setRecordingQuestion(questionId); setError(''); setLiveTranscript(''); setCaptionUnavailable(false); setRecordedClip(null); confirmOnStop.current=false;transcriptRef.current='';
     const canLive=!questionId&&onCardApplied&&('SpeechRecognition' in window||'webkitSpeechRecognition' in window);
     setLiveMode(Boolean(canLive));
     const generation=++liveGeneration.current;
@@ -135,11 +145,12 @@ export default function ImportPanel({ dailyStart, dailyEnd, onCardApplied, compa
         setRecording(false); setCaptureStarting(false); setRecordingQuestion(undefined);
         speech.current?.stop(); speech.current=null;
         const clip={blob,mime,questionId};
+        if(afterCapture.current){const done=afterCapture.current;afterCapture.current=null;done(clip);return;}
         if(confirmOnStop.current){confirmOnStop.current=false;if(liveClient.current&&transcriptRef.current.trim()){liveClient.current.finish(transcriptRef.current);setRecordedClip(null);}else sendRecording(clip);}else setRecordedClip(clip);
       }, () => { if (alive.current) {
         setCaptureStarting(false); setRecording(true);
-        speech.current = startLiveSpeech(language === 'zh' ? 'zh-TW' : 'en-US', text=>{transcriptRef.current=text;setLiveTranscript(text);}, () => {setCaptionUnavailable(true);}, text=>liveClient.current?.offer(text));
-      } });
+        speech.current = startLiveSpeech(voiceLanguage, text=>{transcriptRef.current=text;setLiveTranscript(text);}, () => {setCaptionUnavailable(true);}, text=>liveClient.current?.offer(text));
+      } }, level=>{if(alive.current)setAudioLevel(level);});
     } catch { if (alive.current) { setCaptureStarting(false); setRecordingQuestion(undefined); setError(t('無法使用麥克風，請上傳圖片或手動填寫。', 'Microphone unavailable. Upload a screenshot or enter times manually.')); } }
   }
   function sendRecording(clip:{blob:Blob;mime:string;questionId?:string}) {
@@ -162,6 +173,43 @@ export default function ImportPanel({ dailyStart, dailyEnd, onCardApplied, compa
     if(liveMode&&!recording&&!recordedClip){liveClient.current?.finish(transcriptRef.current);return;}
     if(recording){confirmOnStop.current=true;capture.current?.stop();}
     else if(recordedClip){if(liveClient.current&&transcriptRef.current.trim()){liveClient.current.finish(transcriptRef.current);setRecordedClip(null);}else sendRecording(recordedClip);}
+  }
+  function beginMethod(method:Method, fresh=false) {
+    setSwitchTo(null);
+    if(method==='manual'){onManualEntry?.();return;}
+    if(method==='screenshot')fileInput.current?.click();
+    else void record(undefined,fresh);
+  }
+  function chooseMethod(method:Method) {
+    if(data || recordedClip || recording || captureStarting || pending.current || liveMode){setSwitchTo(method);return;}
+    beginMethod(method);
+  }
+  function resolveSwitch(keep:boolean) {
+    if(!switchTo)return;
+    const method=switchTo;
+    const proceed=(clip=recordedClip)=>{
+      const current=dataRef.current;
+      if(keep&&method==='manual'){setRecordedClip(clip);beginMethod(method);return;}
+      if(keep)setSavedInputs(old=>[...old,{data:current,clip,transcript:transcriptRef.current,pending:pending.current,answers}]);
+      else if(current)void transport(`/api/calendar-imports/${current.importId}`,{method:'DELETE'});
+      if(uploading)cancelUpload();
+      ++liveGeneration.current;liveClient.current?.cancel();liveClient.current=null;mutex.current=false;setLiveBusy(false);setLiveMode(false);
+      speech.current?.stop();speech.current=null;
+      dataRef.current=null;setData(null);setRecordedClip(null);setLiveTranscript('');transcriptRef.current='';
+      pending.current=null;setCanRetry(false);setPreview(null);setSelected([]);setAnswers({});setEditingCard(false);setError('');
+      // Starting a new recording must wait for the recorder's stop callback.
+      beginMethod(method,true);
+    };
+    if(recording){afterCapture.current=proceed;confirmOnStop.current=false;capture.current?.stop();}
+    else proceed();
+  }
+  function restoreInput(index:number) {
+    if(data||recordedClip||recording||busy||liveMode)return;
+    const saved=savedInputs[index];
+    setSavedInputs(old=>old.filter((_,i)=>i!==index));dataRef.current=saved.data;setData(saved.data);
+    setRecordedClip(saved.clip);setLiveTranscript(saved.transcript);transcriptRef.current=saved.transcript;
+    pending.current=saved.pending;setCanRetry(Boolean(saved.pending));setAnswers(saved.answers);
+    if(saved.pending)void upload();
   }
   function clarify(questionId: string, value: string) { if (!data || !value.trim()) return; void run(async () => {
     const body = await request<ImportData>(`/api/calendar-imports/${data.importId}`, { action: 'clarify', version: data.version, answer: { questionId, value } });
@@ -243,13 +291,17 @@ export default function ImportPanel({ dailyStart, dailyEnd, onCardApplied, compa
   }); }
   return <section ref={panel} className={"import-panel" + (compact ? " import-compact" : "")} aria-label={t('提供與確認時間', 'Provide and review availability')}>
     {!compact && <><h2>{t('你什麼時候有空？', 'When are you free?')}</h2><p>{t('選一種方式新增空檔，再確認並提交。', 'Choose a way to add your times, then review and submit.')}</p></>}
-    {!data && !recordedClip && !recording && !captureStarting && !liveMode && sampleUploadLabel && transport !== browserImportTransport ? <button disabled={interactionLocked} onClick={() => upload(new FormData())}>{sampleUploadLabel}</button> : !data && !recordedClip && !recording && !captureStarting && !liveMode && <div className="import-inputs availability-methods">
-      <label className="upload-tile screenshot-entry"><ImagePlus size={24} aria-hidden="true"/><strong>{t('上傳截圖', 'Upload screenshot')}</strong>{!compact && <span>{t('行事曆或有日期的清單', 'Calendar or dated list')}</span>}<input aria-label={t('上傳截圖', 'Upload screenshot')} type="file" accept="image/png,image/jpeg,image/webp" multiple disabled={interactionLocked} onChange={e => { const form = new FormData(); Array.from(e.target.files ?? []).forEach(f => form.append('images', f)); if (e.target.files?.length) void upload(form); e.target.value = ''; }} /></label>
-      {webAudioAvailable === true && <div className="voice-entry"><button type="button" disabled={busy || captureStarting} className="upload-tile" onClick={() => record()}><Mic size={24} aria-hidden="true"/><strong>{recording ? t('停止錄音', 'Stop recording') : t('用語音說', 'Record voice')}</strong>{!compact && <span>{t('例如：週六晚上七點到九點有空', '“Saturday, 7 to 9 pm works.”')}</span>}</button></div>}
-      {onManualEntry && <button type="button" className="upload-tile" disabled={interactionLocked} onClick={onManualEntry}><Clock3 size={24} aria-hidden="true"/><strong>{t('新增這段時間', 'Add time range')}</strong></button>}
+    {sampleUploadLabel && transport !== browserImportTransport ? <button disabled={interactionLocked} onClick={() => upload(new FormData())}>{sampleUploadLabel}</button> : <div className="import-inputs availability-methods">
+      <button type="button" className="upload-tile screenshot-entry" disabled={captureStarting || (busy&&!uploading)} onClick={()=>chooseMethod('screenshot')}><ImagePlus size={24} aria-hidden="true"/><strong>{t('上傳截圖', 'Upload screenshot')}</strong></button>
+      <input ref={fileInput} hidden aria-label={t('上傳截圖', 'Upload screenshot')} type="file" accept="image/png,image/jpeg,image/webp" multiple onChange={e=>{const form=new FormData();Array.from(e.target.files??[]).forEach(f=>form.append('images',f));if(e.target.files?.length)void upload(form);e.target.value='';}}/>
+      <div className="voice-entry"><button type="button" disabled={webAudioAvailable!==true || captureStarting || (busy&&!uploading)} className="upload-tile" onClick={()=>chooseMethod('voice')}><Mic size={24} aria-hidden="true"/><strong>{t('用語音說', 'Record voice')}</strong></button><select className="voice-language-select" aria-label={t('輸入語言','Input language')} disabled={interactionLocked} value={voiceLanguage} onChange={e=>{setVoiceLanguage(e.target.value);try{localStorage.setItem('allvailable.voiceLanguage',e.target.value);}catch{}}}><option value="zh-TW">中文</option><option value="en-US">English</option></select></div>
+      {onManualEntry && <button type="button" className="upload-tile" disabled={captureStarting || (busy&&!uploading)} onClick={()=>chooseMethod('manual')}><Clock3 size={24} aria-hidden="true"/><strong>{t('新增這段時間', 'Add time range')}</strong></button>}
     </div>}
+    {switchTo&&<SwitchDialog onCancel={()=>setSwitchTo(null)}><h3 id="keep-import-title">{t('保留尚未匯入的內容？','Keep unimported content?')}</h3><div className="dining-actions"><button type="button" onClick={()=>resolveSwitch(true)}>{t('保留','Keep')}</button><button type="button" onClick={()=>resolveSwitch(false)}>{t('捨棄','Discard')}</button><button type="button" onClick={()=>setSwitchTo(null)}>{t('取消','Cancel')}</button></div></SwitchDialog>}
+    {savedInputs.map((saved,index)=><button type="button" key={index} disabled={Boolean(data)||Boolean(recordedClip)||recording||busy||liveMode} onClick={()=>restoreInput(index)}>{t('保留的內容','Kept content')} {index+1}</button>)}
 
     {(recording || captureStarting || recordedClip || liveMode) && <section className="live-voice-panel" aria-label={t('語音逐字稿','Live transcript')}>
+      {recording&&<VoiceLevelMeter level={audioLevel}/>}
       <p role="status">{captureStarting?t('正在開啟麥克風…','Opening microphone…'):recording?t('正在聽…','Listening…'):liveMode?t('錄音已停止，完成後可繼續確認卡片','Recording stopped. Finish, then review your cards.'):t('錄音已停止，確認後產生卡片','Recording stopped. Confirm to create cards.')}</p>
       <p className="live-transcript" aria-live="polite">{liveTranscript || (captionUnavailable?t('此瀏覽器無即時字幕。確認後會辨識錄音。','Live captions unavailable in this browser. Confirm to transcribe the recording.'):t('你說的話會出現在這裡…','Your words appear here…'))}</p>
       <div className="dining-actions">{recording&&<button type="button" onClick={()=>capture.current?.stop()}>{t('停止錄音','Stop recording')}</button>}<button type="button" onClick={cancelRecording}>{t('取消','Cancel')}</button><button type="button" className="dining-primary" disabled={captureStarting||busy} onClick={confirmRecording}>{liveMode?t('完成錄音','Finish recording'):t('確認並產生卡片','Confirm recording')}</button></div>
@@ -283,11 +335,16 @@ export default function ImportPanel({ dailyStart, dailyEnd, onCardApplied, compa
             <label><input type="checkbox" checked={cardFields.allDay} onChange={e=>setCardFields({...cardFields,allDay:e.target.checked})}/>{t('全天','All day')}</label>
             <div className="dining-actions"><button type="button" disabled={busy} onClick={()=>setEditingCard(false)}>{t('取消編輯','Cancel edit')}</button><button type="submit" disabled={busy}>{t('儲存卡片','Save card')}</button></div>
           </form>}
-        </article></SwipeReviewCard> : <p ref={reviewSummary} tabIndex={-1} role="status" className="dining-message">{data.extraction.events.length ? liveMode?t('繼續說，新的時段會出現在這裡。','Keep speaking. New cards appear here.'):t('所有項目已確認，請預覽變更。', 'Every item is reviewed. Preview your changes.') : liveMode?t('繼續說，新的卡片會出現在這裡。','Keep speaking. New cards appear here.'):t('已全部略過，表格沒有變更。可結束匯入。', 'All items skipped. Your grid is unchanged. Close this import to start again.')}</p>}
+        </article></SwipeReviewCard> : <p ref={reviewSummary} tabIndex={-1} role="status" className="dining-message">{data.extraction.events.length ? liveMode?t('繼續說，新的時段會出現在這裡。','Keep speaking. New cards appear here.'):t('所有項目已確認，請預覽變更。', 'Every item is reviewed. Preview your changes.') : liveMode?t('繼續說，新的卡片會出現在這裡。','Keep speaking. New cards appear here.'):t('已全部略過，表格沒有變更。', 'All items skipped. Your grid is unchanged.')}</p>}
         {!onCardApplied && !preview && <><div className="dining-form"><label>{t('日期從', 'From date')}<input type="date" disabled={interactionLocked} min={dateStart} max={dateEnd} value={range.startDate} onChange={e => setRange({ ...range, startDate: e.target.value })} /></label><label>{t('日期到', 'To date')}<input type="date" disabled={interactionLocked} min={dateStart} max={dateEnd} value={range.endDate} onChange={e => setRange({ ...range, endDate: e.target.value })} /></label></div><p>{t('空白不代表有空。', 'Blank ≠ available.')}</p><button disabled={interactionLocked || eventQueue.length > 0 || !data.extraction.events.length || !!data.extraction.questions.length || !range.startDate || !range.endDate} onClick={makePreview}>{t('預覽時段變更', 'Preview')}</button></>}
         {preview && <><p>{t('預設只選未填格，勾選其他格才會覆蓋。', 'Select changes to apply. Existing entries are unchecked.')}</p><div className="import-change-list">{preview.changes.map(c => <label key={c.key}><input type="checkbox" disabled={interactionLocked} checked={selected.includes(c.key)} onChange={e => setSelected(old => e.target.checked ? [...old, c.key] : old.filter(k => k !== c.key))} />{c.key} · {status(c.before)} → {status(c.after)}</label>)}</div>{!preview.changes.length && <p>{t('這個範圍沒有變更。', 'No changes within this range.')}</p>}<div className="dining-actions"><button disabled={interactionLocked} onClick={() => setPreview(null)}>{t('返回／重新預覽', 'Back / refresh preview')}</button><button className="dining-primary" disabled={interactionLocked || !selected.length} onClick={apply}>{t('確認加入草稿', 'Save to draft')}</button></div></>}
       </>}
-      <button disabled={interactionLocked||liveMode} onClick={() => run(async () => { await request(`/api/calendar-imports/${data.importId}`, undefined, 'DELETE'); setData(null); setPreview(null); setAnswers({}); setSelected([]); })}>{t('結束這次匯入', 'Close import')}</button>
     </>}
   </section>;
+}
+
+function SwitchDialog({children,onCancel}:{children:React.ReactNode;onCancel:()=>void}) {
+  const dialog=useRef<HTMLDialogElement|null>(null);
+  useEffect(()=>{dialog.current?.showModal();},[]);
+  return <dialog ref={dialog} aria-labelledby="keep-import-title" className="import-switch-dialog" onCancel={onCancel}>{children}</dialog>;
 }
