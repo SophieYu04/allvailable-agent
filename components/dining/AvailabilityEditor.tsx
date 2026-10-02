@@ -31,19 +31,19 @@ export default function AvailabilityEditor({ cells, onChange, dateStart, dateEnd
     setNotice(`${dayLabel(activeDate)} · ${from}-${until} · ${labels[brush]} · ${t('已加入草稿', 'Added to draft')}`);
   }
   const pointerHandled = useRef(false);
-  const drag = useRef<{ date: string; start: number; base: Cells } | null>(null);
-  const labels: Record<SlotStatus, string> = { green: t("可以", "Available"), yellow: t("可能有事", "Tentative"), red: t("不行", "Unavailable"), unknown: t("清除", "Erase") };
-  function paint(base: Cells, date: string, first: number, last: number) {
-    return { ...base, ...Object.fromEntries(times.slice(Math.min(first, last), Math.max(first, last) + 1).map(time => [date + "-" + time, brush])) };
+  const drag = useRef<{ date: string; start: number; base: Cells; status: SlotStatus } | null>(null);
+  const labels: Record<SlotStatus, string> = { green: t("可以", "Available"), yellow: t("可能有事", "Tentative"), red: t("忙碌", "Busy"), unknown: t("未填", "Not marked") };
+  function paint(base: Cells, date: string, first: number, last: number, status: SlotStatus) {
+    return { ...base, ...Object.fromEntries(times.slice(Math.min(first, last), Math.max(first, last) + 1).map(time => [date + "-" + time, status])) };
   }
   function move(event: PointerEvent<HTMLDivElement>) {
     if (!drag.current || disabled) return;
     const target = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>("[data-slot]");
     if (!target || !event.currentTarget.contains(target) || target.dataset.date !== drag.current.date) return;
-    onChange(paint(drag.current.base, drag.current.date, drag.current.start, Number(target.dataset.slot)));
+    onChange(paint(drag.current.base, drag.current.date, drag.current.start, Number(target.dataset.slot), drag.current.status));
   }
   function finish(cancel = false) {
-    if (cancel && drag.current) onChange(drag.current.base);
+    if (cancel && drag.current) { onChange(drag.current.base); pointerHandled.current = false; }
     drag.current = null;
   }
   return <section className="availability-editor timetable-editor" aria-label={t("我的時間", "My availability")}>
@@ -55,13 +55,13 @@ export default function AvailabilityEditor({ cells, onChange, dateStart, dateEnd
         <label>{t('到', 'Until')}<select disabled={disabled} value={until} onChange={event => { setRangeEnd(event.target.value); setNotice(''); }}>{endTimes.map(time => <option key={time} value={time}>{time}</option>)}</select></label>
       </div>
     <div className="timetable-palette" role="group" aria-label={t("這段時間的狀態", "Availability for this range")}>
-      {(Object.keys(labels) as SlotStatus[]).map(status => <button type="button" key={status} className={"timetable-swatch status-" + status} disabled={disabled} aria-label={labels[status]} aria-pressed={brush === status} onClick={() => setBrush(status)}><span className="swatch-dot" aria-hidden="true"/><span>{labels[status]}</span></button>)}
+      {(["green", "yellow", "red"] as const).map(status => <button type="button" key={status} className={"timetable-swatch status-" + status} disabled={disabled} aria-label={labels[status]} aria-pressed={brush === status} onClick={() => setBrush(status)}><span className="swatch-dot" aria-hidden="true"/><span>{labels[status]}</span></button>)}
     </div>
       {!validRange && <p className="availability-range-error" role="alert">{t('結束時間須晚於開始時間。', 'End time must be after start time.')}</p>}
-      <button type="button" className="availability-apply" disabled={disabled || !validRange} onClick={applyRange}>{t('套用到這一天', 'Apply to this day')}</button>
-      <p className="availability-entry-notice" role="status">{notice || t('加入後可在下方檢查，再提交。', 'Review below, then submit your reply.')}</p>
+      <button type="button" className="availability-apply" disabled={disabled || !validRange} onClick={applyRange}>{t('新增這段時間', 'Add time range')}</button>
+      <p className="availability-entry-notice" role="status">{notice || t('可連續新增不同狀態，完成後再提交。', 'Keep adding ranges, then submit when ready.')}</p>
     </div>
-    <div className="availability-grid-heading"><h3>{t('檢查我的時間', 'Review my times')}</h3><p>{t('點選或拖曳格子，套用上方狀態。', 'Tap or drag slots to apply the status above.')}</p></div>
+    <div className="availability-grid-heading"><h3>{t('檢查我的時間', 'Review my times')}</h3><p>{t('空白格填色；已填色的格子再點一次清除。', 'Tap a blank slot to fill it. Tap a colored slot to clear it.')}</p></div>
     <div className="timetable-scroll">
       <div className="timetable" style={{ gridTemplateColumns: `52px repeat(${dates.length}, minmax(72px, 1fr))` }} onPointerMove={move} onPointerUp={() => finish()} onPointerCancel={() => finish(true)} onLostPointerCapture={() => finish()}>
         <span/>{dates.map(date => <div className="timetable-date" key={date}>{dayLabel(date)}</div>)}
@@ -73,10 +73,11 @@ export default function AvailabilityEditor({ cells, onChange, dateStart, dateEnd
               if (disabled || event.button !== 0) return;
               pointerHandled.current = true;
               event.currentTarget.setPointerCapture(event.pointerId);
-              drag.current = { date, start: index, base: cells };
-              onChange(paint(cells, date, index, index));
+              const nextStatus = status === "unknown" ? brush : "unknown";
+              drag.current = { date, start: index, base: cells, status: nextStatus };
+              onChange(paint(cells, date, index, index, nextStatus));
             }}
-            onClick={event => { if (!disabled && (event.detail === 0 || !pointerHandled.current)) onChange(paint(cells, date, index, index)); pointerHandled.current = false; }}/>; })}
+            onClick={() => { if (!disabled && !pointerHandled.current) onChange(paint(cells, date, index, index, status === "unknown" ? brush : "unknown")); pointerHandled.current = false; }}/>; })}
         </div>)}
         <span className="timetable-time timetable-end">{dailyEnd.slice(0, 5)}</span>
       </div>
