@@ -56,6 +56,7 @@ export default function DiningDetail({ token, gatheringId }: { token?: string; g
   const [conflict, setConflict] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const lock = useRef(false);
+  const [manualOpen, setManualOpen] = useState(false);
   const manualEntry = useRef<HTMLElement>(null);
   const availabilityEntry = useRef<HTMLElement>(null);
   const previousStatus = useRef<string | null>(null);
@@ -177,7 +178,7 @@ export default function DiningDetail({ token, gatheringId }: { token?: string; g
     {gathering && (joined || gathering.host_id===userId) && <>
       {!joined ? <p>{t("你目前只管理飯局。可在主揪設定選擇參加。","You are managing this gathering. Join from Host controls.")}</p> : locked ? <p>{t("填寫已鎖定 ·", "Replies closed ·")}{gathering.status === "draft" ? t("發布後即可填寫", "Publish to open replies") : gathering.status === "cancelled" ? t("已取消", "Cancelled") : gathering.status === "finalized" ? t("已拍板", "Finalized") : t("已截止", "Deadline passed")}</p> : <>
         <div className="dining-workspace"><section ref={availabilityEntry} tabIndex={-1} className="manual-panel availability-unified" aria-label={t('我的空檔','My availability')}><h2>{t('我的空檔','My availability')}</h2>
-        <ImportPanel compact dailyStart={gathering.daily_start.slice(0,5)} dailyEnd={gathering.daily_end.slice(0,5)} onCardApplied={next => {
+        <ImportPanel compact onManualEntry={() => {setManualOpen(true);requestAnimationFrame(() => manualEntry.current?.focus());}} dailyStart={gathering.daily_start.slice(0,5)} dailyEnd={gathering.daily_end.slice(0,5)} onCardApplied={next => {
           setCells(next); setBlankPreview(null);
           if (key) try { localStorage.setItem(key,JSON.stringify({cells:next,version})); } catch {}
           setMessage(t('卡片已加入時間表，尚未儲存', 'Card added to timetable. Save your draft when ready.'));
@@ -196,7 +197,7 @@ export default function DiningDetail({ token, gatheringId }: { token?: string; g
           replyActions.current?.focus({ preventScroll: true });
         }}/>
         <section ref={manualEntry} tabIndex={-1} className="manual-entry-focus">
-        <AvailabilityEditor cells={cells} savedCells={savedCells} onChange={edit} dateStart={gathering.date_start} dateEnd={gathering.date_end} dailyStart={gathering.daily_start} dailyEnd={gathering.daily_end} disabled={working || conflict || importActive}/>
+        <AvailabilityEditor showRange={manualOpen} cells={cells} savedCells={savedCells} onChange={edit} dateStart={gathering.date_start} dateEnd={gathering.date_end} dailyStart={gathering.daily_start} dailyEnd={gathering.daily_end} disabled={working || conflict || importActive}/>
         <details className="blank-confirm"><summary>{t('其他填寫選項','More options')}</summary><p>{t('僅限以下範圍：','Only within:')} {gathering.date_start} → {gathering.date_end} · {gathering.daily_start.slice(0,5)}-{gathering.daily_end.slice(0,5)}</p><button disabled={working || conflict || importActive} onClick={() => setBlankPreview(dateList(gathering.date_start,gathering.date_end).flatMap(d=>times.map(time=>`${d}-${time}`)).filter(k=>!cells[k] || cells[k]==='unknown'))}>{t('此範圍其他空白都可以 → 預覽','Remaining blanks are available → Preview')}</button>{blankPreview && <><p>{blankPreview.length} {t('個未填時段將設為可以；已填時段不變。','unknown slots will become available; existing entries stay unchanged.')}</p><div className="import-change-list">{blankPreview.map(k=><p key={k}>{k} · {t('未填 → 可以','Unknown → Available')}</p>)}</div><button disabled={working || conflict || importActive} onClick={()=>{edit({...cells,...Object.fromEntries(blankPreview.filter(k=>!cells[k] || cells[k]==='unknown').map(k=>[k,'green' as const]))});setBlankPreview(null);}}>{t('確認套用到草稿','Apply to draft')}</button><button onClick={()=>setBlankPreview(null)}>{t('取消','Cancel')}</button></>}</details>
         <div ref={replyActions} tabIndex={-1} className="draft-submit-actions"><button disabled={working || importActive || !dirty} onClick={() => {
           setCells(savedCells); setVersion(savedVersion); setConflict(false); setBlankPreview(null);

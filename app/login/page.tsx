@@ -1,7 +1,7 @@
 "use client";
 
 import { loginRedirect, routeSearch, safeAppPath } from '@/lib/client-runtime';
-import { ArrowLeft, CircleAlert, LockKeyhole, CalendarDays } from "lucide-react";
+import { ArrowLeft, CircleAlert, CalendarDays } from "lucide-react";
 import { useState } from "react";
 import Link from "next/link";
 import "@/components/dining/dining.css";
@@ -25,5 +25,5 @@ export default function LoginPage() {
     } catch (error) { setMessage(error instanceof Error ? error.message : t('無法開啟 Google 登入，請重試。', 'Unable to open Google sign-in. Please try again.')); setLoading(false); }
   }
 
-  return <main className="login-page dining-login"><LanguageSwitch/><Link className="login-back" href="/"><ArrowLeft size={16} />{t("回到Allvailable", "Back to Allvailable")}</Link><section className="login-card"><div className="login-symbol"><CalendarDays size={24} strokeWidth={1.5} /></div><h1>{t("一起約個時間", "Find time together")}</h1><p className="login-copy">{t("不需開啟行事曆權限。", "No calendar access needed.")}</p><button className="google-button" onClick={signIn} disabled={loading}><span className="google-g">G</span>{loading ? t("正在前往 Google…", "Opening Google…") : t("使用 Google 登入", "Sign in with Google")}</button>{message && <div className="login-message" role="alert"><CircleAlert size={17} />{message}</div>}<div className="login-safe"><LockKeyhole size={16} /><span>{t("私人行程不公開。", "Your calendar stays private.")}</span></div></section><p className="login-footer"><Link href="/privacy">{t("隱私說明", "Privacy")}</Link> · <Link href="/terms">{t("服務條款", "Terms")}</Link></p></main>;
+  return <main className="login-page dining-login"><LanguageSwitch/><Link className="login-back" href="/"><ArrowLeft size={16} />{t("回到Allvailable", "Back to Allvailable")}</Link><section className="login-card"><div className="login-symbol"><CalendarDays size={24} strokeWidth={1.5} /></div><h1>{t("一起約個時間", "Find time together")}</h1><button className="google-button" onClick={signIn} disabled={loading}><span className="google-g">G</span>{loading ? t("正在前往 Google…", "Opening Google…") : t("使用 Google 登入", "Sign in with Google")}</button>{message && <div className="login-message" role="alert"><CircleAlert size={17} />{message}</div>}</section><p className="login-footer"><Link href="/privacy">{t("隱私說明", "Privacy")}</Link> · <Link href="/terms">{t("服務條款", "Terms")}</Link></p></main>;
 }
