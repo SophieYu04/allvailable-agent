@@ -107,6 +107,10 @@ export function patchFromEvents(events: ExtractedEvent[], range: { startDate: st
   return next;
 }
 
+export function occurrenceDates(event: ExtractedEvent, range: { startDate: string; endDate: string }): string[] {
+  return [...new Set(expandEvent(event, range).map(item => item.startDate).filter((date): date is string => Boolean(date && date >= range.startDate && date <= range.endDate)))];
+}
+
 function expandEvent(event: ExtractedEvent, range: { startDate: string; endDate: string }) {
   if (!event.recurrence || !event.startDate || !event.endDate || !event.recurrence.until) return [event];
   const start = parseDate(event.startDate); const until = Math.min(parseDate(event.recurrence.until), parseDate(range.endDate)); const output: ExtractedEvent[] = [];
@@ -116,5 +120,5 @@ function expandEvent(event: ExtractedEvent, range: { startDate: string; endDate:
     const value = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
     output.push({ ...event, id: `${event.id}-${value}`, startDate: value, endDate: new Date(cursor + parseDate(event.endDate) - start).toISOString().slice(0,10), recurrence: null });
   }
-  return output.length ? output : [event];
+  return output;
 }

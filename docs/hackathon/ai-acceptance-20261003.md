@@ -37,3 +37,9 @@ Token Factory structured responses are useful but can still invent complementary
 ## Remaining submission gates
 
 Human phone microphone acceptance, consenting friends, a public YouTube demo under three minutes and final Devpost submission remain pending. Trial expiry may stop model service before judging; credit-only continuation must be verified without enabling card billing.
+
+## Extended recurrence and phrasing checks
+
+A further six real inference cases cover Chinese half-hour speech, English `7:15 pm–8:45 pm`, two Busy ranges, negated Busy, every Wednesday/Friday and daily overnight speech. Each has a passing hosted result after repairs. Two additional failures were observed and fixed: explicit PM suffixes after minutes were lost by deterministic clock parsing, and a weekly weekday list was omitted by model output. The application now grounds an explicit bounded weekly list; card headings list actual recurrence dates rather than implying continuous days.
+
+No matching bounded recurrence produces no slots. Daily overnight recurrence retains next-day cells without inventing availability before the first occurrence. The updated suite passes **195 tests in 40 files**, TypeScript, scoped lint and Pages build. Human phone acceptance remains pending; the test question has been sent to the account owner.

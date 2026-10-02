@@ -9,6 +9,7 @@ import VoiceLevelMeter from './VoiceLevelMeter';
 import { startLiveSpeech } from '@/lib/calendar/live-speech';
 import { buildPreview } from '@/lib/calendar/import-preview';
 import { createAudioCapture } from '@/lib/calendar/audio-capture';
+import {occurrenceDates} from '@/lib/calendar/slots';
 import type { Cells } from '@/lib/calendar/types';
 import { useLanguage } from '@/components/dining/Language';
 type Props = { dailyStart?: string; dailyEnd?: string; onCardApplied?: (cells:Cells)=>void; compact?: boolean; onManualEntry?: () => void; transport?: ImportTransport; sampleUploadLabel?: string; gatheringId?: string; dateStart?: string; dateEnd?: string; draftVersion?: string; currentCells?: Cells; personalVersion?: string; onApplied?: (cells: Cells, version?: string) => void; beforePreview?: () => Promise<string>; onActivity?: (active: boolean) => void };
@@ -256,6 +257,9 @@ export default function ImportPanel({ dailyStart, dailyEnd, onCardApplied, compa
   const globalQuestions = data?.extraction.questions.filter(question => question.eventId === null) ?? [];
   const eventHasExactTime = Boolean(activeEvent?.allDay || (activeEvent?.startTime && activeEvent?.endTime));
   const voiceEvent=Boolean(activeEvent&&data?.extraction.sources.some(source=>activeEvent.sourceIds.includes(source.id)&&source.kind==='schedule_voice'));
+  const shortDate=(date:string)=>date.slice(5).replace('-','/');
+  const listedDates=activeEvent?.recurrence&&(activeEvent.recurrence.frequency!=='daily'||activeEvent.recurrence.interval!==1)?occurrenceDates(activeEvent,range):[];
+  const cardDate=listedDates.length?listedDates.map(shortDate).join(' · '):activeEvent?.startDate?`${shortDate(activeEvent.startDate)}${activeEvent.recurrence?.until?`–${shortDate(activeEvent.recurrence.until)}`:activeEvent.endDate&&activeEvent.endDate!==activeEvent.startDate?`–${shortDate(activeEvent.endDate)}`:''}`:t('日期待補','Date needed');
   const eventReady = Boolean(activeEvent && (voiceEvent||activeEvent.intent==='available'||activeEvent.label?.trim()) && !globalQuestions.length && activeEvent.startDate && activeEvent.endDate && activeEvent.sourceTimezone && eventHasExactTime && !activeEvent.unresolved.length && !activeQuestions.length && ['busy','available','tentative','uncertain'].includes(activeEvent.intent));
   function confirmEvent() {
     if (!activeEvent || !eventReady || !data) return;
@@ -342,7 +346,7 @@ export default function ImportPanel({ dailyStart, dailyEnd, onCardApplied, compa
         {globalQuestions.map(q => <div className="clarify-field" key={q.id}><label htmlFor={`answer-${q.id}`}>{language === 'zh' ? q.prompt : ({title:'Confirm the item name.',date:'Confirm the full date (including year).',time:'Confirm start and end times.',all_day:'Is this all day, or should it have exact times?',timezone:'Confirm the IANA timezone (e.g. Asia/Taipei).',intent:'Clarify what this item means.',range:'Confirm the date range.'}[q.kind])}</label><input id={`answer-${q.id}`} disabled={interactionLocked} value={answers[q.id] ?? ''} placeholder={q.kind === 'date' ? 'YYYY-MM-DD' : q.kind === 'time' ? '18:00-20:00' : t('輸入答案', 'Your answer')} onChange={e => setAnswers({ ...answers, [q.id]: e.target.value })} /><div className="dining-actions">{q.options?.map(o => <button disabled={interactionLocked} key={o} onClick={() => clarify(q.id, o)}>{o}</button>)}{webAudioAvailable && <button disabled={busy || captureStarting || (recording && recordingQuestion !== q.id)} onClick={() => record(q.id)}>{recording ? t('停止語音回答','Stop recording') : t('用語音回答','Answer by voice')}</button>}<button disabled={interactionLocked || !answers[q.id]?.trim()} onClick={() => clarify(q.id, answers[q.id])}>{t('確認答案', 'Confirm answer')}</button></div></div>)}
         {activeEvent ? <SwipeReviewCard simple={screenshotMode} key={activeEvent.id} remaining={eventQueue.length} disabled={interactionLocked||editingCard} canConfirm={eventReady} onConfirm={confirmEvent} onSkip={skipEvent} onEdit={editCard}><article className="event-review-card" aria-live="polite">
           <p className="dining-eyebrow">{t('逐筆確認', 'ONE AT A TIME')} · {data.extraction.events.length - eventQueue.length + 1}/{data.extraction.events.length}</p>
-          <h3 ref={cardHeading} tabIndex={-1}>{(screenshotMode||voiceEvent)?`${activeEvent.startDate?.slice(5).replace('-', '/')??t('日期待補','Date needed')}${activeEvent.recurrence?.until?`–${activeEvent.recurrence.until.slice(5).replace('-','/')}`:''} ${activeEvent.allDay?t('全天','All day'):`${activeEvent.startTime??'—'}~${activeEvent.endTime??'—'}`}`:activeEvent.label ?? t('未命名事項', 'Untitled item')}</h3>
+          <h3 ref={cardHeading} tabIndex={-1}>{(screenshotMode||voiceEvent)?`${cardDate} ${activeEvent.allDay?t('全天','All day'):`${activeEvent.startTime??'—'}~${activeEvent.endTime??'—'}`}`:activeEvent.label ?? t('未命名事項', 'Untitled item')}</h3>
           {!screenshotMode&&<p>
             {activeEvent.startDate ?? t('日期待確認', 'Date needed')}
             {activeEvent.allDay ? <> · {t('全天', 'All day')}{activeEvent.endDate !== activeEvent.startDate && <> → {activeEvent.endDate ?? t('結束日期待確認', 'End date needed')}</>}</> : <> · {activeEvent.startTime ?? '—'} → {activeEvent.endDate !== activeEvent.startDate && <>{activeEvent.endDate ?? t('結束日期待確認', 'End date needed')} · </>}{activeEvent.endTime ?? '—'}</>}

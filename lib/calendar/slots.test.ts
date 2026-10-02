@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { eventToCells, patchFromEvents } from "./slots";
+import { eventToCells, patchFromEvents, occurrenceDates } from "./slots";
 
 const range = { startDate: "2026-09-18", endDate: "2026-09-19" };
 
@@ -39,3 +39,7 @@ describe("calendar slot conversion", () => {
 it("only counts fully available half-hour cells", () => {
   expect(eventToCells({ id: "e", sourceIds: [], label: null, intent: "available", startDate: "2026-09-18", startTime: "18:15", endDate: "2026-09-18", endTime: "19:15", sourceTimezone: "Asia/Taipei", allDay: false, recurrence: null, unresolved: [] }, range)).toEqual(["2026-09-18-18:30"]);
 });
+it('does not invent an occurrence when no selected weekday falls within the bounded recurrence',()=>{const event={id:'weekly',sourceIds:[],label:null,intent:'busy' as const,startDate:'2026-10-07',endDate:'2026-10-07',startTime:'19:00',endTime:'20:00',sourceTimezone:'Asia/Taipei',allDay:false,recurrence:{frequency:'weekly' as const,interval:1,weekdays:[5],until:'2026-10-07'},unresolved:[]};expect(patchFromEvents([event],{startDate:'2026-10-07',endDate:'2026-10-09'},{})).toEqual({});});
+it('preserves overnight duration for daily recurrence without filling before the first occurrence',()=>{const event={id:'daily',sourceIds:[],label:null,intent:'busy' as const,startDate:'2026-10-07',endDate:'2026-10-08',startTime:'23:00',endTime:'01:00',sourceTimezone:'Asia/Taipei',allDay:false,recurrence:{frequency:'daily' as const,interval:1,weekdays:[],until:'2026-10-09'},unresolved:[]};const result=patchFromEvents([event],{startDate:'2026-10-07',endDate:'2026-10-09'},{});expect(Object.keys(result)).toHaveLength(10);expect(result['2026-10-07-00:00']).toBeUndefined();expect(result['2026-10-08-00:00']).toBe('red');expect(result['2026-10-09-23:30']).toBe('red');});
+
+it('lists only actual recurring dates for a review card',()=>{expect(occurrenceDates({id:'weekly',sourceIds:[],label:null,intent:'busy',startDate:'2026-10-07',endDate:'2026-10-07',startTime:'19:00',endTime:'20:00',sourceTimezone:'Asia/Taipei',allDay:false,recurrence:{frequency:'weekly',interval:1,weekdays:[3,5],until:'2026-10-09'},unresolved:[]},{startDate:'2026-10-07',endDate:'2026-10-09'})).toEqual(['2026-10-07','2026-10-09']);});
