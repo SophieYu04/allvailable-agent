@@ -141,3 +141,18 @@ body:has(.dining),body:has(.dining-login),body:has(.legal-page){background:#f6f8
 .dining .manual-panel{scroll-margin-top:20px}
 .dining .manual-panel:focus,.dining .draft-submit-actions:focus{outline:2px solid var(--accent);outline-offset:4px}
 @media(max-width:760px){.dining.workflow-detail .availability-entry{padding:20px}.dining .availability-methods{grid-template-columns:1fr}.dining .availability-methods .upload-tile{min-height:112px;padding:18px;display:grid;grid-template-columns:28px 1fr;gap:6px 14px;align-content:center}.dining .availability-methods .upload-tile>svg{grid-row:1 / span 2}.dining .availability-methods .upload-tile>span{grid-column:2}.dining .availability-entry .import-panel>h2{font-size:24px}}
+/* A single availability editor: import is an input method, not a second workflow. */
+.dining.workflow-detail .availability-unified{order:0}
+.dining .availability-unified>.import-compact{padding:12px 0 20px;border:0;border-radius:0;background:transparent;box-shadow:none}
+.dining .import-compact .availability-methods{display:flex;flex-wrap:wrap;gap:10px;margin:0}
+.dining .import-compact .availability-methods .upload-tile{display:inline-flex;flex-direction:row;align-items:center;gap:10px;min-height:46px;height:auto;width:auto;padding:12px 16px;border-radius:12px;background:#fff}
+.dining .import-compact .availability-methods .upload-tile>svg{width:18px;height:18px}
+.dining .import-compact .availability-methods .upload-tile>strong{font-size:14px}
+.dining .import-compact .import-entry-note{margin:10px 0 0;font-size:13px!important}
+.dining .manual-entry-focus{min-width:0}
+.dining .manual-entry-focus .timetable-editor{margin-top:0}
+.dining .manual-entry-focus .availability-range-entry{border:0;border-radius:0;background:transparent;padding:0}
+.dining .manual-entry-focus .availability-entry-heading{display:none}
+.dining .manual-entry-focus .blank-confirm{padding:12px 0 0;margin-top:20px}
+.dining .manual-entry-focus .blank-confirm>summary{padding:8px 0;color:var(--muted)}
+main.dining[tabindex="-1"]:focus{outline:none}

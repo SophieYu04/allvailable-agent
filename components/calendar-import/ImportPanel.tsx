@@ -5,8 +5,8 @@ import { browserImportTransport, type ImportTransport, type ImportData, type Imp
 import { createAudioCapture } from '@/lib/calendar/audio-capture';
 import type { Cells } from '@/lib/calendar/types';
 import { useLanguage } from '@/components/dining/Language';
-type Props = { onManualEntry?: () => void; transport?: ImportTransport; sampleUploadLabel?: string; gatheringId?: string; dateStart?: string; dateEnd?: string; draftVersion?: string; currentCells?: Cells; personalVersion?: string; onApplied?: (cells: Cells, version?: string) => void; beforePreview?: () => Promise<string>; onActivity?: (active: boolean) => void };
-export default function ImportPanel({ onManualEntry, transport = browserImportTransport, sampleUploadLabel, gatheringId, dateStart, dateEnd, draftVersion = '1', personalVersion = '1', currentCells = {}, onApplied, beforePreview, onActivity }: Props) {
+type Props = { compact?: boolean; onManualEntry?: () => void; transport?: ImportTransport; sampleUploadLabel?: string; gatheringId?: string; dateStart?: string; dateEnd?: string; draftVersion?: string; currentCells?: Cells; personalVersion?: string; onApplied?: (cells: Cells, version?: string) => void; beforePreview?: () => Promise<string>; onActivity?: (active: boolean) => void };
+export default function ImportPanel({ compact = false, onManualEntry, transport = browserImportTransport, sampleUploadLabel, gatheringId, dateStart, dateEnd, draftVersion = '1', personalVersion = '1', currentCells = {}, onApplied, beforePreview, onActivity }: Props) {
   const { t, language } = useLanguage();
   const [data, setData] = useState<ImportData | null>(null);
   const [busy, setBusy] = useState(false);
@@ -141,15 +141,14 @@ export default function ImportPanel({ onManualEntry, transport = browserImportTr
     const next = { ...currentCells }; changes.forEach(c => { if (c.after === 'unknown' || (!gatheringId && c.after === 'green')) delete next[c.key]; else next[c.key] = c.after as Cells[string]; });
     onApplied?.(body.cells ?? next, String(body.version)); setData(null); setPreview(null); setSelected([]);
   }); }
-  return <section ref={panel} className="import-panel" aria-label={t('提供與確認時間', 'Provide and review availability')}>
-    <h2>{t('你什麼時候有空？', 'When are you free?')}</h2>
-    <p>{t('選一種方式新增空檔，再確認並提交。', 'Choose a way to add your times, then review and submit.')}</p>
+  return <section ref={panel} className={"import-panel" + (compact ? " import-compact" : "")} aria-label={t('提供與確認時間', 'Provide and review availability')}>
+    {!compact && <><h2>{t('你什麼時候有空？', 'When are you free?')}</h2><p>{t('選一種方式新增空檔，再確認並提交。', 'Choose a way to add your times, then review and submit.')}</p></>}
     {!data && sampleUploadLabel && transport !== browserImportTransport ? <button disabled={interactionLocked} onClick={() => upload(new FormData())}>{sampleUploadLabel}</button> : !data && <div className="import-inputs availability-methods">
-      <label className="upload-tile screenshot-entry"><ImagePlus size={24} aria-hidden="true"/><strong>{t('上傳截圖', 'Upload screenshot')}</strong><span>{t('行事曆或有日期的清單', 'Calendar or dated list')}</span><input aria-label={t('上傳截圖', 'Upload screenshot')} type="file" accept="image/png,image/jpeg,image/webp" multiple disabled={interactionLocked} onChange={e => { const form = new FormData(); Array.from(e.target.files ?? []).forEach(f => form.append('images', f)); if (e.target.files?.length) void upload(form); e.target.value = ''; }} /></label>
-      <div className="voice-entry"><button type="button" disabled={busy || captureStarting || webAudioAvailable !== true} className="upload-tile" onClick={() => record()}><Mic size={24} aria-hidden="true"/><strong>{recording ? t('停止並辨識', 'Stop recording') : t('用語音說', 'Record voice')}</strong><span>{t('例如：週六晚上七點到九點有空', '“Saturday, 7 to 9 pm works.”')}</span></button>{webAudioAvailable !== true && <p role="status">{webAudioAvailable === null ? t('確認語音功能中…', 'Checking voice…') : t('語音暫不可用，請用截圖或手動選時段。', 'Voice unavailable. Use a screenshot or choose times.')}</p>}</div>
+      <label className="upload-tile screenshot-entry"><ImagePlus size={24} aria-hidden="true"/><strong>{t('上傳截圖', 'Upload screenshot')}</strong>{!compact && <span>{t('行事曆或有日期的清單', 'Calendar or dated list')}</span>}<input aria-label={t('上傳截圖', 'Upload screenshot')} type="file" accept="image/png,image/jpeg,image/webp" multiple disabled={interactionLocked} onChange={e => { const form = new FormData(); Array.from(e.target.files ?? []).forEach(f => form.append('images', f)); if (e.target.files?.length) void upload(form); e.target.value = ''; }} /></label>
+      {webAudioAvailable === true && <div className="voice-entry"><button type="button" disabled={busy || captureStarting} className="upload-tile" onClick={() => record()}><Mic size={24} aria-hidden="true"/><strong>{recording ? t('停止並辨識', 'Stop recording') : t('用語音說', 'Record voice')}</strong>{!compact && <span>{t('例如：週六晚上七點到九點有空', '“Saturday, 7 to 9 pm works.”')}</span>}</button></div>}
       {onManualEntry && <button type="button" className="upload-tile" disabled={interactionLocked} onClick={onManualEntry}><Clock3 size={24} aria-hidden="true"/><strong>{t('手動選時段', 'Choose times')}</strong><span>{t('選日期、開始與結束', 'Pick a day, start and end')}</span></button>}
     </div>}
-    {!data && <p className="import-entry-note">{t('截圖：最多 5 張、每張 5 MB。語音：最多 60 秒。私人行程不公開。', 'Screenshots: up to 5 × 5 MB. Voice: up to 60 seconds. Calendar details stay private.')}</p>}
+    {!data && <p className="import-entry-note">{compact ? t('或直接在下方選時段。', 'Or choose your times below.') : t('截圖：最多 5 張、每張 5 MB。私人行程不公開。', 'Screenshots: up to 5 × 5 MB. Calendar details stay private.')}</p>}
     {(recording || captureStarting) && <div role="status" className="dining-message">{captureStarting ? t('正在開啟麥克風…', 'Opening microphone…') : t('錄音中…', 'Recording…')}<button onClick={cancelRecording}>{t('取消錄音', 'Cancel recording')}</button></div>}
     {busy && <p role="status">{t('正在處理，請保留此頁…', 'Processing…')}</p>}
     {error && <div role="alert" className="dining-message">{error}{canRetry && <button disabled={interactionLocked} onClick={() => upload()}>{t('重試上傳', 'Retry upload')}</button>}</div>}
