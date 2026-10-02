@@ -11,6 +11,7 @@ const options={auth:{persistSession:false,autoRefreshToken:false}};
 const admin=createClient(url,env.SUPABASE_SERVICE_ROLE_KEY,options);
 const users=[];let gathering;
 const check=(condition,label)=>{if(!condition)throw Error(label);console.log('PASS '+label);};
+const api=async(user,path,method='GET',body)=>{const response=await fetch(appOrigin.origin+path,{method,headers:{Authorization:'Bearer '+user.token,Origin:'https://sophieyu04.github.io',...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined});const data=await response.json();if(!response.ok)throw Error(path+': HTTP '+response.status+' '+JSON.stringify(data));return data;};
 const rpc=async(client,name,args)=>{const {data,error}=await client.rpc(name,args);if(error)throw Error(name+': '+error.message);return data;};
 try{
  for(let i=0;i<3;i++){
@@ -28,12 +29,14 @@ try{
  for(const user of users.slice(1)){
   const found=await rpc(user.client,'resolve_gathering_code',{p_code:gathering.join_code});
   check(found.token===gathering.invite_token,'code resolves invitation');
-  await rpc(user.client,'join_gathering',{p_invite_token:found.token});
+  const preview=await api(user,'/api/v1/join/'+found.token);check(preview.gathering.id===gathering.id,'hosted invitation preview');
+  await api(user,'/api/v1/join/'+found.token,'POST');check(true,'hosted guest join');
  }
  const cells={'2035-10-03-19:00':'green','2035-10-03-19:30':'green'};
  for(const user of users){
-  let detail=await rpc(user.client,'read_gathering',{p_id:gathering.id});
-  let draft=await rpc(user.client,'save_availability_draft',{p_gathering_id:gathering.id,p_version:detail.availability_drafts[0].version,p_cells:cells});
+  const detail=await api(user,'/api/v1/coordination/'+gathering.id);check(detail.gathering.id===gathering.id,'hosted invitation detail');
+  const loaded=await api(user,'/api/v1/coordination/'+gathering.id+'/draft');
+  const draft=await api(user,'/api/v1/coordination/'+gathering.id+'/draft','PATCH',{expectedVersion:loaded.version,cells});check(Object.keys(draft.cells).length===2,'hosted availability edit and save');
   await rpc(user.client,'submit_availability',{p_gathering_id:gathering.id,p_expected_draft_version:draft.version,p_cells:cells,p_changes:[]});
  }
  const own=await rpc(users[1].client,'read_gathering',{p_id:gathering.id});
