@@ -56,7 +56,7 @@ it('uses the dedicated Token Factory key/base for a vision model when no overrid
   vi.stubEnv('NEBIUS_VISION_BASE_URL','');
   vi.stubEnv('NEBIUS_VISION_MODEL','vision-model');
   const extraction = { sources: [{ id: 'image', kind: 'calendar', reason: null }], events: [{ id: 'e', sourceIds: ['image'], label: 'Dinner', intent: 'busy', startDate: '2026-10-03', endDate: '2026-10-03', startTime: '19:00', endTime: '20:00', sourceTimezone: 'Asia/Taipei', allDay: false, recurrence: null, unresolved: [], userConfirmed: true }], visibleRanges: [], questions: [] };
-  const fetch = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({sources:[{id:'image',text:'2026-10-03 Dinner 19:00–20:00 Asia/Taipei'}]})}}]}),{status:200})).mockResolvedValueOnce(new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(extraction) } }] }), { status: 200 }));
+  const fetch = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({sources:[{id:'image',text:'2026-10-03 Dinner 19:00–20:00 Asia/Taipei',timeAxis:[],events:[{label:'Dinner',startDate:'2026-10-03',endDate:'2026-10-03',startTime:'19:00',endTime:'20:00',allDay:false,blockIndex:null,evidence:'Printed range'}]}]})}}]}),{status:200})).mockResolvedValueOnce(new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(extraction) } }] }), { status: 200 }));
   vi.stubGlobal('fetch', fetch);
   const {extractCalendarImages} = await import('./openai');
   await expect(extractCalendarImages([{id:'image',dataUrl:'data:image/png;base64,AA=='}])).resolves.toMatchObject({events:[{userConfirmed:false}]});

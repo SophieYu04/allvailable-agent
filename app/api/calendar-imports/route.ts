@@ -1,3 +1,7 @@
+import {geometrySchema} from '@/lib/calendar/image-geometry';
+import {z} from 'zod';
+import {prepareScreenshotCards} from '@/lib/calendar/screenshot-cards';
+import {extractionSchema} from '@/lib/calendar/schemas';
 import {eventFingerprint} from '@/lib/calendar/live-voice';
 import { NextResponse } from "next/server";
 import { extractTimeTree, ocrSchema } from "@/lib/ai/timetree";
@@ -20,6 +24,8 @@ export async function POST(request: Request) {
   const images = form.getAll("images").filter((value): value is File => value instanceof File);
   const liveTranscript = form.get('mode') === 'live_voice' ? String(form.get('transcript') ?? '').trim() : '';
   if(form.get('mode')==='live_voice'&&(!liveTranscript||liveTranscript.length>8000||images.length))return jsonError(400,'TRANSCRIPT_INVALID','逐字稿需為 1–8000 字，且不可混合圖片');
+  let imageGeometry:Array<import('@/lib/calendar/image-geometry').CalendarGeometry|null>=[];
+  try{imageGeometry=z.array(geometrySchema.nullable()).max(5).parse(JSON.parse(String(form.get('imageGeometry')??'[]')));}catch{return jsonError(400,'IMAGE_GEOMETRY_INVALID','圖片版面資料無效，請重新上傳');}
   const audioValue = form.get("audio");
   const audio = audioValue instanceof File ? audioValue : undefined;
   if (images.length > 5) return jsonError(413, "TOO_MANY_IMAGES", "一次最多上傳 5 張圖片", false, id);
@@ -29,9 +35,11 @@ export async function POST(request: Request) {
   const imageBytes = await Promise.all(images.map(async (file) => Buffer.from(await file.arrayBuffer())));
   if (imageBytes.some((bytes, index) => !matchesImageSignature(bytes, images[index].type) || isAnimatedImage(bytes, images[index].type))) return jsonError(415, "IMAGE_INVALID", "圖片內容無法驗證或包含動態影格", false, id);
   const gatheringId = String(form.get("gatheringId") ?? "");
+  let imageContext:{timezone:string;dateStart?:string;dateEnd?:string}={timezone:'Asia/Taipei'};
   if (gatheringId) {
     const {data: membership, error: membershipError} = await auth.supabase.from("memberships").select("user_id").eq("gathering_id", gatheringId).eq("user_id", auth.user.id).eq("status", "joined").maybeSingle();
     if (membershipError || !membership) return jsonError(403, "MEMBERSHIP_REQUIRED", "請先加入邀約 / Join this invitation before importing", false, id);
+    if(images.length){const {data:gathering}=await auth.supabase.from('gatherings').select('date_start,date_end').eq('id',gatheringId).single();if(gathering)imageContext={timezone:'Asia/Taipei',dateStart:gathering.date_start,dateEnd:gathering.date_end};}
   }
   try {
     if (images.length && form.get("mode") !== "timetree") providerConfig("vision");
@@ -55,7 +63,7 @@ export async function POST(request: Request) {
   try {
     const isTimeTree = form.get("mode") === "timetree";
     if (isTimeTree && images.length !== 1) return jsonError(400, "ONE_SCREENSHOT_REQUIRED", "請一次選擇一張 TimeTree 截圖");
-    let extraction = isTimeTree ? await extractTimeTree(ocrSchema.parse(JSON.parse(String(form.get("ocr") ?? "[]"))), crypto.randomUUID()) : await analyzeImport({ sourceId: crypto.randomUUID(), images: images.length ? images.map((file, index) => ({ id: crypto.randomUUID(), dataUrl: `data:${file.type};base64,${imageBytes[index].toString("base64")}` })) : undefined, audio, transcript: liveTranscript || undefined });
+    let extraction = isTimeTree ? await extractTimeTree(ocrSchema.parse(JSON.parse(String(form.get("ocr") ?? "[]"))), crypto.randomUUID()) : await analyzeImport({ sourceId: crypto.randomUUID(), images: images.length ? images.map((file, index) => ({ id: crypto.randomUUID(),geometry:imageGeometry[index], dataUrl: `data:${file.type};base64,${imageBytes[index].toString("base64")}` })) : undefined, audio, imageContext, transcript: liveTranscript || undefined });
     if(liveTranscript)extraction={...extraction,liveVoice:{startedAt:Date.now(),calls:1,closed:false,seen:extraction.events.map(eventFingerprint)}};
     const hasUntrustedImage = images.length > 0 && (extraction.sources.length !== images.length || extraction.sources.some((source) => source.kind !== "calendar"));
     const status = liveTranscript ? (extraction.questions.length?'needs_clarification':'ready') : extraction.screenshotValidation?.category === "possible" ? "needs_clarification" : hasUntrustedImage || extraction.sources.length === 0 || extraction.events.length === 0 || extraction.sources.every((source) => source.kind === "unrelated")
@@ -88,9 +96,9 @@ function isAnimatedImage(bytes: Buffer, type: string) {
 export async function GET(request: Request) {
   try {
     const { supabase, user } = await requireUser(request);
-    const { data, error } = await supabase.from("calendar_imports").select("id,gathering_id,status,version,extraction,expires_at,updated_at,idempotency_key").eq("user_id", user.id).gt("expires_at", new Date().toISOString()).order("updated_at", { ascending: false });
+    const { data, error } = await supabase.from("calendar_imports").select("id,gathering_id,status,version,extraction,expires_at,updated_at,idempotency_key,source_kind").eq("user_id", user.id).gt("expires_at", new Date().toISOString()).order("updated_at", { ascending: false });
     if (error) return jsonError(500, "IMPORT_LIST_FAILED", "無法讀取待恢復匯入", true);
     const audio = [process.env.NEBIUS_AUDIO_API_KEY, process.env.NEBIUS_AUDIO_BASE_URL, process.env.NEBIUS_AUDIO_MODEL];
-    return NextResponse.json({ imports: data ?? [], webAudioAvailable: process.env.AI_IMPORT_ENABLED === "true" && (Boolean(await workersAudioBinding()) || audio.every(Boolean)) });
+    return NextResponse.json({ imports: (data??[]).map(item=>({...item,extraction:item.source_kind==='image'?prepareScreenshotCards(extractionSchema.parse(item.extraction),'Asia/Taipei',true):item.extraction})), webAudioAvailable: process.env.AI_IMPORT_ENABLED === "true" && (Boolean(await workersAudioBinding()) || audio.every(Boolean)) });
   } catch { return jsonError(401, "UNAUTHENTICATED", "請先登入"); }
 }

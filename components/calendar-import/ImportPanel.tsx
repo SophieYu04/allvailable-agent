@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ImagePlus, Mic, Clock3 } from 'lucide-react';
 import { browserImportTransport, type ImportTransport, type ImportData, type ImportPreview as Preview } from '@/lib/calendar/import-transport';
+import {readCalendarGeometry} from '@/lib/calendar/image-geometry';
 import {createLiveVoiceClient} from '@/lib/calendar/live-voice-client';
 import SwipeReviewCard from './SwipeReviewCard';
 import { startLiveSpeech } from '@/lib/calendar/live-speech';
@@ -88,6 +89,9 @@ export default function ImportPanel({ dailyStart, dailyEnd, onCardApplied, compa
     const controller = new AbortController();
     uploadController.current = controller; setUploading(true);
     await run(async () => {
+      const files=item.form.getAll('images').filter((value):value is File=>value instanceof File);
+      if(files.length&&!item.form.has('imageGeometry'))item.form.set('imageGeometry',JSON.stringify(await Promise.all(files.map(readCalendarGeometry))));
+      if(controller.signal.aborted)return;
       const r = await transport('/api/calendar-imports', { method: 'POST', headers: { 'Idempotency-Key': item.key }, body: item.form, signal: controller.signal });
       const body = await r.json() as ImportData & {error?:{message?:string}};
       if (!r.ok) throw new Error(body.error?.message ?? t('上傳失敗，檔案已保留', 'Upload failed. Your files are retained.'));
@@ -165,6 +169,9 @@ export default function ImportPanel({ dailyStart, dailyEnd, onCardApplied, compa
   }); }
   const eventQueue = data?.extraction.events.filter(event => event.userConfirmed !== true) ?? [];
   const activeEvent = eventQueue[0];
+  const screenshotMode=Boolean(data?.extraction.sources.some(source=>source.kind==='calendar'));
+  const missingDate=Boolean(activeEvent&&(!activeEvent.startDate||!activeEvent.endDate||activeEvent.unresolved.includes('date')));
+  const missingTime=Boolean(activeEvent&&activeEvent.allDay!==true&&(!activeEvent.startTime||!activeEvent.endTime||activeEvent.unresolved.includes('time')));
   const focusKey = activeEvent ? `${activeEvent.id}:${data?.version}` : data ? preview?.previewId ?? 'review-complete' : '';
   useEffect(() => {
     if (focusKey) (cardHeading.current ?? reviewSummary.current)?.focus();
@@ -198,6 +205,15 @@ export default function ImportPanel({ dailyStart, dailyEnd, onCardApplied, compa
       }
     });
   }
+  function completeScreenshot(form:FormData){if(!data||!activeEvent)return;void run(async()=>{
+    const date=String(form.get('date')||activeEvent.startDate||'');
+    const endDate=missingDate?date:activeEvent.endDate||date;
+    const startTime=String(form.get('startTime')||activeEvent.startTime||'');
+    const endTime=String(form.get('endTime')||activeEvent.endTime||'');
+    if(!activeEvent.allDay&&`${endDate}T${endTime}`<=`${date}T${startTime}`)throw new Error(t('結束須晚於開始','End must be after start.'));
+    const body=await request<ImportData>(`/api/calendar-imports/${data.importId}`,{action:'edit_event',version:data.version,eventId:activeEvent.id,changes:{date,endDate,...(!activeEvent.allDay?{startTime,endTime}:{}),intent:'busy',allDay:activeEvent.allDay===true,reviewed:false}});
+    setData({...data,...body,version:String(body.version)});
+  });}
   function editCard(){if(!activeEvent)return;setCardFields({title:activeEvent.label??'',date:activeEvent.startDate??'',endDate:activeEvent.endDate??'',startTime:activeEvent.startTime??'',endTime:activeEvent.endTime??'',sourceTimezone:activeEvent.sourceTimezone??'Asia/Taipei',intent:['available','tentative','busy'].includes(activeEvent.intent)?activeEvent.intent:'busy',allDay:activeEvent.allDay===true});setEditingCard(true);}
   function saveCard(){if(!data||!activeEvent)return;void run(async()=>{
     if(cardFields.endDate<cardFields.date)throw new Error(t('結束日期不可早於開始','End date must not precede start.'));
@@ -232,7 +248,7 @@ export default function ImportPanel({ dailyStart, dailyEnd, onCardApplied, compa
       {webAudioAvailable === true && <div className="voice-entry"><button type="button" disabled={busy || captureStarting} className="upload-tile" onClick={() => record()}><Mic size={24} aria-hidden="true"/><strong>{recording ? t('停止錄音', 'Stop recording') : t('用語音說', 'Record voice')}</strong>{!compact && <span>{t('例如：週六晚上七點到九點有空', '“Saturday, 7 to 9 pm works.”')}</span>}</button></div>}
       {onManualEntry && <button type="button" className="upload-tile" disabled={interactionLocked} onClick={onManualEntry}><Clock3 size={24} aria-hidden="true"/><strong>{t('手動選時段', 'Choose times')}</strong><span>{t('選日期、開始與結束', 'Pick a day, start and end')}</span></button>}
     </div>}
-    {!data && <p className="import-entry-note">{compact ? t('語音即時整理成卡片；右滑後加入草稿。', 'Voice becomes live cards. Swipe right to add to draft.') : t('截圖：最多 5 張、每張 5 MB。私人行程不公開。', 'Screenshots: up to 5 × 5 MB. Calendar details stay private.')}</p>}
+
     {(recording || captureStarting || recordedClip || liveMode) && <section className="live-voice-panel" aria-label={t('語音逐字稿','Live transcript')}>
       <p role="status">{captureStarting?t('正在開啟麥克風…','Opening microphone…'):recording?t('正在聽…','Listening…'):liveMode?t('錄音已停止，完成後可繼續確認卡片','Recording stopped. Finish, then review your cards.'):t('錄音已停止，確認後產生卡片','Recording stopped. Confirm to create cards.')}</p>
       <p className="live-transcript" aria-live="polite">{liveTranscript || (captionUnavailable?t('此瀏覽器無即時字幕。確認後會辨識錄音。','Live captions unavailable in this browser. Confirm to transcribe the recording.'):t('你說的話會出現在這裡…','Your words appear here…'))}</p>
@@ -245,17 +261,23 @@ export default function ImportPanel({ dailyStart, dailyEnd, onCardApplied, compa
     {data && <>{!liveMode&&data.extraction.transcript && <details className="voice-transcript"><summary>{t('語音逐字稿', 'Transcript')}</summary><p>{data.extraction.transcript}</p></details>}<p className="dining-eyebrow">02 / {t('確認辨識', 'REVIEW')}</p>
       {data.status === 'rejected' ? <p>{t('沒有辨識到日期或空檔，請重試或直接選時段。', 'No dates or availability recognized. Try again or choose times below.')}</p> : <>
         {globalQuestions.map(q => <div className="clarify-field" key={q.id}><label htmlFor={`answer-${q.id}`}>{language === 'zh' ? q.prompt : ({title:'Confirm the item name.',date:'Confirm the full date (including year).',time:'Confirm start and end times.',all_day:'Is this all day, or should it have exact times?',timezone:'Confirm the IANA timezone (e.g. Asia/Taipei).',intent:'Clarify what this item means.',range:'Confirm the date range.'}[q.kind])}</label><input id={`answer-${q.id}`} disabled={interactionLocked} value={answers[q.id] ?? ''} placeholder={q.kind === 'date' ? 'YYYY-MM-DD' : q.kind === 'time' ? '18:00-20:00' : t('輸入答案', 'Your answer')} onChange={e => setAnswers({ ...answers, [q.id]: e.target.value })} /><div className="dining-actions">{q.options?.map(o => <button disabled={interactionLocked} key={o} onClick={() => clarify(q.id, o)}>{o}</button>)}{webAudioAvailable && <button disabled={busy || captureStarting || (recording && recordingQuestion !== q.id)} onClick={() => record(q.id)}>{recording ? t('停止語音回答','Stop recording') : t('用語音回答','Answer by voice')}</button>}<button disabled={interactionLocked || !answers[q.id]?.trim()} onClick={() => clarify(q.id, answers[q.id])}>{t('確認答案', 'Confirm answer')}</button></div></div>)}
-        {activeEvent ? <SwipeReviewCard key={activeEvent.id} remaining={eventQueue.length} disabled={interactionLocked||editingCard} canConfirm={eventReady} onConfirm={confirmEvent} onSkip={skipEvent} onEdit={editCard}><article className="event-review-card" aria-live="polite">
+        {activeEvent ? <SwipeReviewCard simple={screenshotMode} key={activeEvent.id} remaining={eventQueue.length} disabled={interactionLocked||editingCard} canConfirm={eventReady} onConfirm={confirmEvent} onSkip={skipEvent} onEdit={editCard}><article className="event-review-card" aria-live="polite">
           <p className="dining-eyebrow">{t('逐筆確認', 'ONE AT A TIME')} · {data.extraction.events.length - eventQueue.length + 1}/{data.extraction.events.length}</p>
-          <h3 ref={cardHeading} tabIndex={-1}>{activeEvent.label ?? t('未命名事項', 'Untitled item')}</h3>
-          <p>
+          <h3 ref={cardHeading} tabIndex={-1}>{screenshotMode?`${activeEvent.startDate?.slice(5).replace('-', '/')??t('日期待補','Date needed')} ${activeEvent.allDay?t('全天','All day'):`${activeEvent.startTime??'—'}~${activeEvent.endTime??'—'}`}`:activeEvent.label ?? t('未命名事項', 'Untitled item')}</h3>
+          {!screenshotMode&&<p>
             {activeEvent.startDate ?? t('日期待確認', 'Date needed')}
             {activeEvent.allDay ? <> · {t('全天', 'All day')}{activeEvent.endDate !== activeEvent.startDate && <> → {activeEvent.endDate ?? t('結束日期待確認', 'End date needed')}</>}</> : <> · {activeEvent.startTime ?? '—'} → {activeEvent.endDate !== activeEvent.startDate && <>{activeEvent.endDate ?? t('結束日期待確認', 'End date needed')} · </>}{activeEvent.endTime ?? '—'}</>}
             <br />{activeEvent.sourceTimezone ?? t('時區待確認', 'Timezone needed')} · {activeEvent.intent === 'reminder' ? t('提醒', 'Reminder') : activeEvent.intent === 'uncertain' ? t('確認後標為忙碌', 'Confirm as busy') : status(activeEvent.intent === 'available' ? 'green' : activeEvent.intent === 'tentative' ? 'yellow' : 'red')}
-          </p>
-          <p>{t('右滑確認，將這段時間加入表格；重疊時段會更新。尚未儲存或提交。', 'Swipe right to add these times, replacing overlapping entries. Save and submit when ready.')}</p>
-          {activeQuestions.map(q => <div className="clarify-field" key={q.id}><label htmlFor={`answer-${q.id}`}>{language === 'zh' ? q.prompt : ({title:'Confirm the item name.',date:'Confirm the full date (including year).',time:'Confirm start and end times.',all_day:'Is this all day, or should it have exact times?',timezone:'Confirm the IANA timezone (e.g. Asia/Taipei).',intent:'Are you busy, tentative or available?',range:'Confirm the date range.'}[q.kind])}</label><input id={`answer-${q.id}`} disabled={interactionLocked} value={answers[q.id] ?? ''} placeholder={q.kind === 'date' ? 'YYYY-MM-DD' : q.kind === 'time' ? '18:00-20:00' : t('輸入答案', 'Your answer')} onChange={e => setAnswers({ ...answers, [q.id]: e.target.value })} /><div className="dining-actions">{q.options?.map(o => <button disabled={interactionLocked} key={o} onClick={() => clarify(q.id, o)}>{t(o, ({'真的全天不能':'Busy all day','指定起訖':'Specify exact times','只是提醒不占時間':'Reminder only','暫時未知':'Not sure yet','不能參加':'Busy','可能有事':'Tentative','可以參加':'Available'} as Record<string,string>)[o] ?? o)}</button>)}{webAudioAvailable && <button disabled={busy || captureStarting || (recording && recordingQuestion !== q.id)} onClick={() => record(q.id)}>{recording ? t('停止語音回答','Stop recording') : t('用語音回答','Answer by voice')}</button>}<button disabled={interactionLocked || !answers[q.id]?.trim()} onClick={() => clarify(q.id, answers[q.id])}>{t('確認答案', 'Confirm answer')}</button></div></div>)}
-          {editingCard && <form className="card-edit-form" onSubmit={e=>{e.preventDefault();saveCard();}}>
+          </p>}
+          {screenshotMode&&<p className="screenshot-event-name"><span className="busy-card-badge">● Busy</span>{activeEvent.label??t('行程','Calendar event')}</p>}
+          {!screenshotMode&&<p>{t('右滑確認，將這段時間加入表格；重疊時段會更新。尚未儲存或提交。', 'Swipe right to add these times, replacing overlapping entries. Save and submit when ready.')}</p>}
+          {!screenshotMode&&activeQuestions.map(q => <div className="clarify-field" key={q.id}><label htmlFor={`answer-${q.id}`}>{language === 'zh' ? q.prompt : ({title:'Confirm the item name.',date:'Confirm the full date (including year).',time:'Confirm start and end times.',all_day:'Is this all day, or should it have exact times?',timezone:'Confirm the IANA timezone (e.g. Asia/Taipei).',intent:'Are you busy, tentative or available?',range:'Confirm the date range.'}[q.kind])}</label><input id={`answer-${q.id}`} disabled={interactionLocked} value={answers[q.id] ?? ''} placeholder={q.kind === 'date' ? 'YYYY-MM-DD' : q.kind === 'time' ? '18:00-20:00' : t('輸入答案', 'Your answer')} onChange={e => setAnswers({ ...answers, [q.id]: e.target.value })} /><div className="dining-actions">{q.options?.map(o => <button disabled={interactionLocked} key={o} onClick={() => clarify(q.id, o)}>{t(o, ({'真的全天不能':'Busy all day','指定起訖':'Specify exact times','只是提醒不占時間':'Reminder only','暫時未知':'Not sure yet','不能參加':'Busy','可能有事':'Tentative','可以參加':'Available'} as Record<string,string>)[o] ?? o)}</button>)}{webAudioAvailable && <button disabled={busy || captureStarting || (recording && recordingQuestion !== q.id)} onClick={() => record(q.id)}>{recording ? t('停止語音回答','Stop recording') : t('用語音回答','Answer by voice')}</button>}<button disabled={interactionLocked || !answers[q.id]?.trim()} onClick={() => clarify(q.id, answers[q.id])}>{t('確認答案', 'Confirm answer')}</button></div></div>)}
+          {screenshotMode&&(missingDate||missingTime)&&<form className="screenshot-missing-fields" onSubmit={e=>{e.preventDefault();completeScreenshot(new FormData(e.currentTarget));}}>
+            {missingDate&&<label>{t('日期','Date')}<input type="date" name="date" required disabled={interactionLocked} defaultValue={activeEvent.startDate??''}/></label>}
+            {missingTime&&<div className="screenshot-time-fields"><label>{t('開始','From')}<input type="time" name="startTime" required disabled={interactionLocked} defaultValue={activeEvent.startTime??''}/></label><label>{t('結束','Until')}<input type="time" name="endTime" required disabled={interactionLocked} defaultValue={activeEvent.endTime??''}/></label></div>}
+            <button type="submit" disabled={interactionLocked}>{t('補上時段','Set time')}</button>
+          </form>}
+          {!screenshotMode&&editingCard && <form className="card-edit-form" onSubmit={e=>{e.preventDefault();saveCard();}}>
             {(['title','date','endDate','startTime','endTime','sourceTimezone'] as const).map(field=><label key={field}>{({title:t('名稱','Name'),date:t('日期','Date'),endDate:t('結束日期','End date'),startTime:t('開始','From'),endTime:t('結束','Until'),sourceTimezone:t('時區','Timezone')})[field]}<input required disabled={busy||(cardFields.allDay&&(field==='startTime'||field==='endTime'))} type={field==='date'||field==='endDate'?'date':field==='startTime'||field==='endTime'?'time':'text'} value={cardFields[field]} onChange={e=>setCardFields({...cardFields,[field]:e.target.value})}/></label>)}
             <label>{t('狀態','Status')}<select value={cardFields.intent} onChange={e=>setCardFields({...cardFields,intent:e.target.value})}><option value="available">Available</option><option value="tentative">Tentative</option><option value="busy">Busy</option></select></label>
             <label><input type="checkbox" checked={cardFields.allDay} onChange={e=>setCardFields({...cardFields,allDay:e.target.checked})}/>{t('全天','All day')}</label>

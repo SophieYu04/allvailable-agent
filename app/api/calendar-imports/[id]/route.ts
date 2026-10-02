@@ -1,3 +1,4 @@
+import {prepareScreenshotCards} from '@/lib/calendar/screenshot-cards';
 import { editDraft, appleDraftPreview } from "@/lib/calendar/draft-events";
 import { NextResponse } from "next/server";
 import { extractionSchema } from "@/lib/calendar/schemas";
@@ -14,10 +15,10 @@ export async function GET(request: Request, context: Context) {
   const { id } = await context.params;
   try {
     const { supabase, user } = await requireUser(request);
-    const { data, error } = await supabase.from("calendar_imports").select("id,gathering_id,status,version,extraction,expires_at,updated_at").eq("id", id).eq("user_id", user.id).single();
+    const { data, error } = await supabase.from("calendar_imports").select("id,gathering_id,status,version,extraction,expires_at,updated_at,source_kind").eq("id", id).eq("user_id", user.id).single();
     if (error || !data) return jsonError(404, "IMPORT_NOT_FOUND", "找不到這次匯入");
     if (new Date(data.expires_at).getTime() <= Date.now()) return jsonError(410, "IMPORT_EXPIRED", "這次匯入已過期，請重新上傳");
-    return NextResponse.json({ ...data, version: String(data.version) });
+    return NextResponse.json({ ...data, extraction:data.source_kind==='image'?prepareScreenshotCards(extractionSchema.parse(data.extraction),'Asia/Taipei',true):data.extraction, version: String(data.version) });
   } catch { return jsonError(401, "UNAUTHENTICATED", "請先登入"); }
 }
 
@@ -30,6 +31,7 @@ export async function POST(request: Request, context: Context) {
     if (importError || !importRow) return jsonError(404, "IMPORT_NOT_FOUND", "找不到這次匯入");
     if (new Date(importRow.expires_at).getTime() <= Date.now()) return jsonError(410, "IMPORT_EXPIRED", "這次匯入已過期");
     if (String(importRow.version) !== String(body.version)) return jsonError(409, "VERSION_CONFLICT", "匯入內容已更新，請重新載入", true);
+    if(importRow.source_kind==='image')importRow.extraction=prepareScreenshotCards(extractionSchema.parse(importRow.extraction),'Asia/Taipei',true);
     if (body.action === "apple_preview") {
       const events = appleDraftPreview(extractionSchema.parse(importRow.extraction));
       return NextResponse.json({ events, version: String(importRow.version) });

@@ -9,7 +9,7 @@ Allvailable is a scheduling agent for groups. Describe a plan, review your avail
 ## How it works
 
 1. **Plan:** describe a gathering in English or Chinese. Review the AI-generated invitation and share its link or six-digit code.
-2. **Review:** choose times, upload a calendar screenshot, or record your availability. Confirm extracted events and fill in missing details.
+2. **Review:** choose times, upload a calendar screenshot, or record your availability. Review Busy/Skip cards; supply dates or times only when unreadable.
 3. **Meet:** submit availability and compare shared time slots. Unknown or unsubmitted time never counts as free.
 
 ## Built with
@@ -19,7 +19,7 @@ Allvailable is a scheduling agent for groups. Describe a plan, review your avail
 | Web | React, TypeScript, GitHub Pages |
 | API | Cloudflare Workers |
 | Auth & data | Supabase Auth and Postgres with row-level security |
-| AI | NVIDIA Nemotron Super on Nebius Token Factory; MiniCPM for screenshot transcription |
+| AI | NVIDIA Nemotron Super on Nebius Token Factory; Gemma 3 for visual calendar understanding |
 
 The models interpret plans, screenshots, and voice availability. Supported browsers show live speech captions and send finalized phrases to NVIDIA Nemotron for review cards during recording. Cloudflare Whisper provides the confirmed-recording fallback. Deterministic code computes the overlap; users approve changes before submission. Model credentials stay on the server.
 
@@ -43,6 +43,6 @@ npm run build:pages
 
 ## Hackathon
 
-Built for **Nebius × NVIDIA — Best Apps and Agents**. Real text, screenshot, and voice inference have been verified. See [live voice cards](docs/hackathon/live-voice-evidence-20261002.md), [text and vision evidence](docs/hackathon/live-evidence-20260930.md) and [voice verification](docs/hackathon/voice-evidence-20261002.md). Final submission and video are still in preparation.
+Built for **Nebius × NVIDIA — Best Apps and Agents**. Real text, screenshot, and voice inference have been verified. See [calendar grid recognition](docs/hackathon/calendar-grid-evidence-20261002.md), [live voice cards](docs/hackathon/live-voice-evidence-20261002.md), [text and vision evidence](docs/hackathon/live-evidence-20260930.md) and [voice verification](docs/hackathon/voice-evidence-20261002.md). Final submission and video are still in preparation.
 
 [MIT License](LICENSE)
