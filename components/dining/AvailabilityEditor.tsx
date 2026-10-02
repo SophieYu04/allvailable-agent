@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type PointerEvent } from "react";
+import { Fragment, useRef, useState, type PointerEvent } from "react";
 import { dateList, timeList } from "@/lib/calendar/slots";
 import type { Cells, SlotStatus } from "@/lib/calendar/types";
 import { useLanguage } from "./Language";
@@ -60,14 +60,14 @@ export default function AvailabilityEditor({ cells, savedCells, onChange, dateSt
       {(["green", "yellow", "red"] as const).map(status => <button type="button" key={status} className={"timetable-swatch status-" + status} disabled={disabled} aria-label={labels[status]} aria-pressed={brush === status} onClick={() => setBrush(status)}><span className="swatch-dot" aria-hidden="true"/><span>{labels[status]}</span></button>)}
     </div>
     <div className="timetable-scroll">
-      <div className="timetable" style={{ gridTemplateColumns: `52px repeat(${dates.length}, minmax(72px, 1fr))` }} onPointerMove={move} onPointerUp={() => finish()} onPointerCancel={() => finish(true)} onLostPointerCapture={() => finish()}>
-        <span/>{dates.map(date => <div className="timetable-date" key={date}>{dayLabel(date)}</div>)}
-        {times.map((time, index) => <div className="timetable-row" key={time}>
+      <div className="timetable" style={{ gridTemplateColumns: `52px repeat(${dates.length}, minmax(88px, 1fr))` }} onPointerMove={move} onPointerUp={() => finish()} onPointerCancel={() => finish(true)} onLostPointerCapture={() => finish()}>
+        <span className="timetable-corner"/>{dates.map(date => <div className="timetable-date" key={date}>{dayLabel(date)}</div>)}
+        {times.map((time, index) => <Fragment key={time}>
           <span className="timetable-time">{time}</span>
           {dates.map(date => { const status = cells[date + "-" + time] ?? "unknown"; return <button type="button" key={date} data-slot={index} data-date={date} className={"timetable-cell status-" + status + (savedCells && status !== (savedCells[date + "-" + time] ?? "unknown") ? " is-unsaved" : "")} disabled={disabled}
             aria-label={dayLabel(date) + " " + time + "-" + (times[index + 1] ?? dailyEnd.slice(0, 5)) + ", " + (status === "unknown" ? t("未填", "Not marked") : labels[status])}
             onPointerDown={event => {
-              if (disabled || event.button !== 0) return;
+              if (disabled || event.button !== 0 || event.pointerType === "touch") return;
               pointerHandled.current = true;
               event.currentTarget.setPointerCapture(event.pointerId);
               const nextStatus = status === "unknown" ? brush : "unknown";
@@ -75,7 +75,7 @@ export default function AvailabilityEditor({ cells, savedCells, onChange, dateSt
               onChange(paint(cells, date, index, index, nextStatus));
             }}
             onClick={() => { if (!disabled && !pointerHandled.current) onChange(paint(cells, date, index, index, status === "unknown" ? brush : "unknown")); pointerHandled.current = false; }}/>; })}
-        </div>)}
+        </Fragment>)}
         <span className="timetable-time timetable-end">{dailyEnd.slice(0, 5)}</span>
       </div>
     </div>

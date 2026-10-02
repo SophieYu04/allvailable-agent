@@ -165,3 +165,24 @@ main.dining[tabindex="-1"]:focus{outline:none}
 .review-card-stack{position:relative;margin:18px 0 24px;isolation:isolate}.review-card-back{position:absolute;inset:8px 10px -8px;border:1px solid #cfddd3;border-radius:22px;background:#e8eee9;z-index:-1}.review-swipe-card{position:relative;background:#fff;border:1px solid #d2ded6;border-radius:22px;padding:16px;transition:transform 100ms ease-out;box-shadow:0 8px 24px #233d2a0a}.review-swipe-card .event-review-card{border:0;background:none;padding:8px;margin:0}.review-card-actions{display:grid;grid-template-columns:1fr 1fr 1.5fr;gap:8px}.swipe-hint{font-size:.75rem;text-align:center;color:#637269;margin:12px 0 0}.swipe-decision{position:absolute;top:12px;right:16px;font-weight:700;background:white;padding:8px;border-radius:8px;z-index:2}.swipe-decision.accept{color:#276e43}.swipe-decision.skip{color:#99483f}.card-edit-form{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px 0}.card-edit-form label{display:grid;gap:6px;font-size:.8rem}.card-edit-form .dining-actions{grid-column:1/-1}.live-voice-panel{border:1px solid #c8d9ce;background:#f4f8f5;border-radius:18px;padding:18px;margin:12px 0}.live-transcript{min-height:72px;font-size:1.1rem;line-height:1.7;white-space:pre-wrap}.dining .review-swipe-card h3:focus{outline:none}@media(max-width:520px){.review-card-actions{grid-template-columns:1fr 1fr}.review-card-actions .dining-primary{grid-column:1/-1}.review-swipe-card{padding:10px}}
 
 .review-card-actions.simple{grid-template-columns:1fr 1fr}.review-card-actions.simple .dining-primary{grid-column:auto}.busy-card-badge{display:inline-flex;align-items:center;background:#faeae8;color:#a43f39;border-radius:999px;font-size:13px;font-weight:600;padding:4px 10px;margin-right:10px}.screenshot-event-name{display:flex;align-items:center;gap:8px}.screenshot-missing-fields{display:grid;gap:12px;margin:18px 0}.screenshot-missing-fields label{display:grid;gap:6px;font-size:13px}.screenshot-time-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+@media(max-width:600px){
+ .dining.workflow-detail{padding:16px 12px 28px}
+ .dining.workflow-detail .manual-panel{padding:16px 12px}
+ .dining .import-compact .availability-methods{display:grid;grid-template-columns:minmax(0,1fr);gap:8px}
+ .dining .import-compact .availability-methods .upload-tile{width:100%;min-width:0;min-height:48px;justify-content:flex-start;padding:12px 14px}
+ .dining .timetable-palette{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:8px 0 16px}
+ .dining .timetable-palette .timetable-swatch{min-width:0;width:100%;gap:5px;padding:8px 4px;font-size:12px}
+ .dining .timetable-scroll{max-width:100%;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+ .dining .timetable{width:max-content;min-width:100%}
+ .dining .timetable-date{white-space:nowrap;padding:0 6px 16px;font-size:12px}
+ .dining .timetable-time,.dining .timetable-corner{position:sticky;left:0;top:auto;z-index:2;background:#fff}
+ .dining .timetable-time{padding:0 8px 0 0;display:flex;align-items:flex-start;justify-content:flex-end;font-size:11px}
+ .dining .timetable-cell{min-height:44px;height:44px;touch-action:pan-x pan-y}
+ .dining .draft-submit-actions{position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding-bottom:calc(12px + env(safe-area-inset-bottom))}
+ .dining .draft-submit-actions button{min-width:0;width:100%;min-height:44px;padding:10px 8px}
+ .dining .draft-submit-actions button:last-child:nth-child(odd){grid-column:1/-1}
+ .dining .availability-range-fields select{font-size:16px}
+ .dining .review-card-actions{gap:6px}
+ .dining .review-card-actions button{min-width:0;padding:10px 6px}
+}
