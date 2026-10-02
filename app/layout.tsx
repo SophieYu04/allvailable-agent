@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "@/components/dining/product-ui.css";
 import { LanguageProvider } from "@/components/dining/Language";
 
 export const metadata: Metadata = {

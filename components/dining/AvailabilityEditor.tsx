@@ -31,7 +31,7 @@ export default function AvailabilityEditor({ cells, onChange, dateStart, dateEnd
   }
   return <section className="availability-editor timetable-editor" aria-label={t("我的時間", "My availability")}>
     <div className="timetable-palette" aria-label={t("選擇填色", "Choose a color")}>
-      {(Object.keys(labels) as SlotStatus[]).map(status => <button type="button" key={status} className={"timetable-swatch status-" + status} disabled={disabled} aria-label={labels[status]} aria-pressed={brush === status} onClick={() => setBrush(status)}/>)}
+      {(Object.keys(labels) as SlotStatus[]).map(status => <button type="button" key={status} className={"timetable-swatch status-" + status} disabled={disabled} aria-label={labels[status]} aria-pressed={brush === status} onClick={() => setBrush(status)}><span className="swatch-dot" aria-hidden="true"/><span>{labels[status]}</span></button>)}
     </div>
     <div className="timetable-scroll">
       <div className="timetable" style={{ gridTemplateColumns: `52px repeat(${dates.length}, minmax(72px, 1fr))` }} onPointerMove={move} onPointerUp={() => finish()} onPointerCancel={() => finish(true)} onLostPointerCapture={() => finish()}>

@@ -1,4 +1,5 @@
 import { createRoot } from 'react-dom/client';
+import { useEffect } from 'react';
 import { LanguageProvider } from '@/components/dining/Language';
 import DiningHome from '@/components/dining/DiningHome';
 import DiningDetail from '@/components/dining/DiningDetail';
@@ -10,9 +11,16 @@ import { usePathname } from './navigation';
 import { getSupabaseBrowserClient } from './supabase';
 import { appHref, safeAppPath, routeSearch } from '@/lib/client-runtime';
 import '@/app/globals.css';
+import "@/components/dining/product-ui.css";
 
 function App() {
   const path = usePathname();
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    const main = document.querySelector('main');
+    main?.setAttribute('tabindex', '-1');
+    main?.focus({ preventScroll: true });
+  }, [path]);
   if (path === '/') return <DiningHome key={path}/>;
   if (path === '/history') return <DiningHome key={path} view="history"/>;
   if (path === '/hosting') return <DiningHome key={path} view="hosting"/>;

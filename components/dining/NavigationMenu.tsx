@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Menu } from "lucide-react";
+import { Menu, CalendarDays, Plus, History, RefreshCw, Languages, LogOut, LogIn, UserRound, Check } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { useLanguage } from "./Language";
@@ -45,19 +45,19 @@ export default function NavigationMenu({ accountEnabled = true, onRefresh, refre
       setOpen(false); router.push("/"); router.refresh();
     } catch { setError(true); } finally { setBusy(false); }
   }
-  return <div className="navigation-menu" ref={root}>
+  return <div className="navigation-menu" ref={root} onBlur={event => { if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget as Node)) setOpen(false); }}>
     <button ref={trigger} type="button" className="navigation-toggle" aria-label={t("選單", "Menu")} aria-expanded={open} aria-controls="account-navigation" onClick={() => setOpen(value => !value)}><Menu size={22} aria-hidden="true"/></button>
     {open && <nav id="account-navigation" className="navigation-panel" aria-label={t("帳號與語言", "Account and language")}>
-      {signedIn && accountEmail && <p className="navigation-account">{accountEmail}</p>}
+      {signedIn && accountEmail && <div className="navigation-account"><span className="navigation-avatar" aria-hidden="true"><UserRound size={18}/></span><span><strong>{t("目前帳戶", "Your account")}</strong><span className="navigation-email" title={accountEmail}>{accountEmail}</span></span></div>}
       {accountEnabled && <>
-        <Link href="/" onClick={()=>setOpen(false)}>{t('接下來的聚會','Upcoming')}</Link>
-        <Link href="/hosting" onClick={()=>setOpen(false)}>{t('我發起的','Hosting')}</Link>
-        <Link href="/history" onClick={()=>setOpen(false)}>{t('歷史聚會','History')}</Link>
-        <button type="button" disabled={refreshDisabled} onClick={()=>{setOpen(false);if(onRefresh)onRefresh();else router.refresh();}}>{t('重新整理','Refresh')}</button>
+        <Link href="/" aria-current={pathname === "/" ? "page" : undefined} onClick={()=>setOpen(false)}><CalendarDays size={18} aria-hidden="true"/><span>{t('接下來的聚會','Upcoming')}</span>{pathname === "/" && <Check size={15} aria-hidden="true"/>}</Link>
+        <Link href="/hosting" aria-current={pathname === "/hosting" ? "page" : undefined} onClick={()=>setOpen(false)}><Plus size={18} aria-hidden="true"/><span>{t('我發起的','Hosting')}</span>{pathname === "/hosting" && <Check size={15} aria-hidden="true"/>}</Link>
+        <Link href="/history" aria-current={pathname === "/history" ? "page" : undefined} onClick={()=>setOpen(false)}><History size={18} aria-hidden="true"/><span>{t('歷史聚會','History')}</span>{pathname === "/history" && <Check size={15} aria-hidden="true"/>}</Link>
+        <button type="button" disabled={refreshDisabled} onClick={()=>{setOpen(false);if(onRefresh)onRefresh();else router.refresh();}}><RefreshCw size={18} aria-hidden="true"/><span>{t('重新整理','Refresh')}</span></button>
         <hr/>
       </>}
-      <button type="button" onClick={() => { setLanguage(language === "en" ? "zh" : "en"); setOpen(false); }}>{language === "en" ? "繁體中文" : "English"}</button>
-      {accountEnabled && (signedIn ? <button type="button" disabled={busy} onClick={signOut}>{t("登出", "Sign out")}</button> : <Link href={`/login?next=${encodeURIComponent(pathname === "/login" ? "/" : pathname)}`} onClick={() => setOpen(false)}>{t("登入", "Sign in")}</Link>)}
+      <button type="button" onClick={() => { setLanguage(language === "en" ? "zh" : "en"); setOpen(false); }}><Languages size={18} aria-hidden="true"/><span>{language === "en" ? "繁體中文" : "English"}</span></button>
+      {accountEnabled && (signedIn ? <button type="button" disabled={busy} onClick={signOut}><LogOut size={18} aria-hidden="true"/><span>{t("登出", "Sign out")}</span></button> : <Link href={`/login?next=${encodeURIComponent(pathname === "/login" ? "/" : pathname)}`} onClick={() => setOpen(false)}><LogIn size={18} aria-hidden="true"/><span>{t("登入", "Sign in")}</span></Link>)}
       {error && <p role="alert">{t("登出失敗，請重試", "Sign out failed. Retry.")}</p>}
     </nav>}
   </div>;
