@@ -50,6 +50,7 @@ export default function DiningDetail({ token, gatheringId }: { token?: string; g
   const [message, setMessage] = useState("");
   const [working, setWorking] = useState(false);
   const [conflict, setConflict] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
   const [shared, setShared] = useState<Array<{key:string;before:SlotStatus;after:SlotStatus}> | null>(null);
   const [sharedSelection, setSharedSelection] = useState<string[]>([]);
   const [now, setNow] = useState(() => Date.now());
@@ -163,8 +164,9 @@ export default function DiningDetail({ token, gatheringId }: { token?: string; g
         else { await navigator.clipboard.writeText(url); setMessage(t("邀請連結已複製", "Invitation link copied.")); }
       })}>{t("分享飯局", "Share invitation")}</button>
       {gathering.host_id === userId && !['draft','finalized','cancelled'].includes(gathering.status) && <button disabled={working || importActive} onClick={() => act(async () => { await api(`/api/v1/coordination/${gathering.id}/recalculate`, 'POST'); await load(); setMessage(t("已依最新提交計算推薦", "Recommendations updated from submitted availability.")); })}>{t("計算推薦時間", "Find shared times")}</button>}
-      {gathering.host_id === userId && !['draft','finalized','cancelled'].includes(gathering.status) && <button disabled={working || importActive} onClick={() => { if(confirm(t("確定取消這場飯局？取消後無法繼續填寫或拍板。", "Cancel this invitation? Replies and finalization will be closed."))) void act(async()=>{await api(`/api/v1/coordination/${gathering.id}/cancel`, 'POST');await load();setMessage(t("飯局已取消", "Invitation cancelled."));}); }}>{t("取消飯局", "Cancel invitation")}</button>}
+      {gathering.host_id === userId && !['draft','finalized','cancelled'].includes(gathering.status) && <button disabled={working || importActive} onClick={() => setCancelOpen(true)}>{t("取消飯局", "Cancel invitation")}</button>}
       <button disabled={working || importActive} onClick={() => { if (confirm(t("重新載入會取代本機尚未儲存的填寫，確定？", "Reload and replace unsaved local changes?"))) void act(() => load(true)); }}>{t("重新載入", "Reload")}</button></div>
+      {cancelOpen && <div className="confirm-overlay"><section role="alertdialog" aria-modal="true" aria-labelledby="cancel-heading" className="confirm-card"><h2 id="cancel-heading">{t("取消這場邀請？", "Cancel this invitation?")}</h2><p>{t("取消後，參與者將無法繼續回覆或拍板；邀請會保留在歷史紀錄。", "Replies and finalization will close. The invitation will remain in History.")}</p><div><button disabled={working} onClick={()=>setCancelOpen(false)}>{t("保留邀請", "Keep invitation")}</button><button disabled={working} className="confirm-danger" onClick={()=>void act(async()=>{await api(`/api/v1/coordination/${gathering.id}/cancel`, 'POST');await load();setCancelOpen(false);setMessage(t("飯局已取消", "Invitation cancelled."));})}>{t("確認取消", "Cancel invitation")}</button></div></section></div>}
       {!joined ? <p>{t("你目前只管理飯局。可在主揪設定選擇參加。","You are managing this gathering. Join from Host controls.")}</p> : locked ? <p>{t("填寫已鎖定 ·", "Replies closed ·")}{gathering.status === "draft" ? t("發布後即可填寫", "Publish to open replies") : gathering.status === "cancelled" ? t("已取消", "Cancelled") : gathering.status === "finalized" ? t("已拍板", "Finalized") : t("已截止", "Deadline passed")}</p> : <>
         <ol className="dining-steps"><li>01 {t('填寫我的時間','Mark my times')}</li><li>02 {t('檢查並提交','Review & submit')}</li><li>03 {t('主揪拍板','Host finalizes')}</li></ol>
         <div className="dining-workspace"><details className="optional-import"><summary>{t('匯入我的時間','Import my availability')}</summary>
