@@ -40,7 +40,7 @@ export default function GatheringManager({ gathering:g, reload, onLeave, host, e
   const taipeiLocal=new Date(new Date(g.deadline_at).getTime()+8*3600000).toISOString().slice(0,16);
   return <section className="gathering-management">
     {message&&<p role="status">{message}</p>}
-    {host&&g.status==='draft'&&<button className="dining-primary" disabled={busy||disabled||expired} onClick={()=>void run('publish')}>{t('發布邀約','Launch gathering')}</button>}
+    {host&&g.status==='draft'&&<button className="dining-primary" disabled={busy||disabled||expired} onClick={()=>void run('publish')}>{t('發起聚會並填寫空檔','Launch event & add availability')}</button>}
     {host&&<details><summary>{t('主揪設定','Host controls')}</summary>
       {!closed&&!expired&&<form key={g.revision} onSubmit={settings}><fieldset disabled={busy||disabled} className="dining-form">
         <label className="dining-wide">{t('名稱','Name')}<input name="name" required defaultValue={g.name}/></label>

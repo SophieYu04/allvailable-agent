@@ -62,7 +62,7 @@ export default function DiningHome({view = 'upcoming'}: {view?: 'upcoming' | 'hi
     submitting.current=true;setBusy(true);setMessage('');
     requestKey.current??=crypto.randomUUID();
     try{
-      const response=await apiFetch('/api/v1/coordination',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:form.get('name'),dateStart:form.get('start'),dateEnd:form.get('end'),dailyStart:form.get('from'),dailyEnd:form.get('to'),...(form.get('duration') ? {duration:Number(form.get('duration'))} : {}),deadline:`${form.get('deadline')}:00+08:00`,recommendationCount:3,saveAsDraft:true,hostParticipates:form.has('participates'),conditionsPublic:form.has('public'),idempotencyKey:requestKey.current})});
+      const response=await apiFetch('/api/v1/coordination',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:form.get('name'),dateStart:form.get('start'),dateEnd:form.get('end'),dailyStart:form.get('from'),dailyEnd:form.get('to'),...(form.get('duration') ? {duration:Number(form.get('duration'))} : {}),deadline:`${form.get('deadline')}:00+08:00`,recommendationCount:3,saveAsDraft:false,hostParticipates:form.has('participates'),conditionsPublic:form.has('public'),idempotencyKey:requestKey.current})});
       const result=await response.json() as {error?:{message?:string};gatherings:Meal[];gathering:Meal};
       if(!response.ok)throw new Error(result.error?.message??t("建立失敗，填寫已保留", "Creation failed. Your input is retained."));
       router.push(`/gatherings/${result.gathering.id}`);

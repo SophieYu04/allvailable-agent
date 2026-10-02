@@ -35,7 +35,7 @@ function Fields({draft,busy,onSubmit,onCancel}:{draft:PlanDraft|null;busy:boolea
     <section className="launch-block launch-reply"><label className="launch-deadline">{t('回覆期限','Reply by')}<input name="deadline" type="datetime-local" required max={start?`${start}T${from}`:undefined} defaultValue={draft?.deadline && Number.isFinite(Date.parse(draft.deadline)) ? new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Taipei',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(draft.deadline)).replace(' ','T') : ''}/><small>{t('台灣時間，聚會開始前。','Taipei time · Before the gathering.')}</small></label></section>
     <details className="launch-options"><summary>{t('其他設定','More options')}</summary><label><input type="checkbox" name="participates" defaultChecked/>{t('我也參加','I am participating')}</label><label><input type="checkbox" name="public"/>{t('公開推薦條件','Share ranking criteria')}</label></details>
     {error&&<p role="alert" className="dining-message">{error}</p>}
-    <div className="launch-actions"><button type="button" onClick={onCancel}>{t('取消','Cancel')}</button><button type="submit" className="dining-primary">{busy?t('儲存中…','Saving…'):t('建立草稿','Create draft')}</button></div>
+    <div className="launch-actions"><button type="button" onClick={onCancel}>{t('取消','Cancel')}</button><button type="submit" className="dining-primary">{busy?t('儲存中…','Saving…'):t('發起聚會','Launch event')}</button></div>
   </fieldset></form>;
 }
 export default function LaunchForm({busy,onSubmit,onCancel}:{busy:boolean;onSubmit:(event:FormEvent<HTMLFormElement>)=>void;onCancel:()=>void}) {

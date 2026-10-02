@@ -1,11 +1,12 @@
 "use client";
 import { useEffect, useRef, useState } from 'react';
+import { ImagePlus, Mic, Clock3 } from 'lucide-react';
 import { browserImportTransport, type ImportTransport, type ImportData, type ImportPreview as Preview } from '@/lib/calendar/import-transport';
 import { createAudioCapture } from '@/lib/calendar/audio-capture';
 import type { Cells } from '@/lib/calendar/types';
 import { useLanguage } from '@/components/dining/Language';
-type Props = { transport?: ImportTransport; sampleUploadLabel?: string; gatheringId?: string; dateStart?: string; dateEnd?: string; draftVersion?: string; currentCells?: Cells; personalVersion?: string; onApplied?: (cells: Cells, version?: string) => void; beforePreview?: () => Promise<string>; onActivity?: (active: boolean) => void };
-export default function ImportPanel({ transport = browserImportTransport, sampleUploadLabel, gatheringId, dateStart, dateEnd, draftVersion = '1', personalVersion = '1', currentCells = {}, onApplied, beforePreview, onActivity }: Props) {
+type Props = { onManualEntry?: () => void; transport?: ImportTransport; sampleUploadLabel?: string; gatheringId?: string; dateStart?: string; dateEnd?: string; draftVersion?: string; currentCells?: Cells; personalVersion?: string; onApplied?: (cells: Cells, version?: string) => void; beforePreview?: () => Promise<string>; onActivity?: (active: boolean) => void };
+export default function ImportPanel({ onManualEntry, transport = browserImportTransport, sampleUploadLabel, gatheringId, dateStart, dateEnd, draftVersion = '1', personalVersion = '1', currentCells = {}, onApplied, beforePreview, onActivity }: Props) {
   const { t, language } = useLanguage();
   const [data, setData] = useState<ImportData | null>(null);
   const [busy, setBusy] = useState(false);
@@ -16,7 +17,7 @@ export default function ImportPanel({ transport = browserImportTransport, sample
   const [preview, setPreview] = useState<Preview | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [recording, setRecording] = useState(false);
-  const [webAudioAvailable, setWebAudioAvailable] = useState(false);
+  const [webAudioAvailable, setWebAudioAvailable] = useState<boolean | null>(null);
   const pending = useRef<{ form: FormData; key: string } | null>(null);
   const capture = useRef<ReturnType<typeof createAudioCapture> | null>(null);
   const [captureStarting, setCaptureStarting] = useState(false);
@@ -35,12 +36,12 @@ export default function ImportPanel({ transport = browserImportTransport, sample
     alive.current = true;
     let cancelled = false;
     transport('/api/calendar-imports').then(async r => {
-      if (!r.ok) return;
+      if (!r.ok) { if (!cancelled) setWebAudioAvailable(false); return; }
       const body = await r.json() as { imports?: (ImportData & {id:string;gathering_id?:string;expires_at:string})[]; webAudioAvailable?: boolean };
       if (!cancelled) setWebAudioAvailable(body.webAudioAvailable === true);
       const saved = body.imports?.find((item: { gathering_id?: string }) => gatheringId ? item.gathering_id === gatheringId : !item.gathering_id);
       if (!cancelled && saved && !pending.current && !mutex.current) setData({ ...saved, importId: saved.id, version: String(saved.version), expiresAt: saved.expires_at });
-    }).catch(() => {});
+    }).catch(() => { if (!cancelled) setWebAudioAvailable(false); });
     return () => { cancelled = true; alive.current = false; capture.current?.cancel(); };
   }, [gatheringId, transport]);
   async function request<T = Record<string, unknown>>(path: string, body?: unknown, method = 'POST') {
@@ -141,9 +142,14 @@ export default function ImportPanel({ transport = browserImportTransport, sample
     onApplied?.(body.cells ?? next, String(body.version)); setData(null); setPreview(null); setSelected([]);
   }); }
   return <section ref={panel} className="import-panel" aria-label={t('提供與確認時間', 'Provide and review availability')}>
-    <p className="dining-eyebrow">01 / {t('提供時間', 'PROVIDE YOUR TIMES')}</p><h2>{t('提供你的時間', 'Add your times')}</h2>
-    <p>{t('先確認，再加入草稿。私人行程不公開。', 'Review first. Your calendar stays private.')}</p>
-    {!data && sampleUploadLabel && transport !== browserImportTransport ? <button disabled={interactionLocked} onClick={() => upload(new FormData())}>{sampleUploadLabel}</button> : !data && <div className="import-inputs"><label className="upload-tile"><strong>↥ {t('上傳行事曆或單日清單', 'Calendar or dated task-list screenshot')}</strong><span>PNG / JPG / WebP · {t('最多 5 張，每張 5 MB', 'Up to 5 files, 5 MB each')}</span><input aria-label={t('選擇截圖', 'Choose screenshots')} type="file" accept="image/png,image/jpeg,image/webp" multiple disabled={interactionLocked} onChange={e => { const form = new FormData(); Array.from(e.target.files ?? []).forEach(f => form.append('images', f)); if (e.target.files?.length) void upload(form); e.target.value = ''; }} /></label>{webAudioAvailable ? <button disabled={busy || captureStarting} className="upload-tile" onClick={() => record()}><strong>{recording ? '◼' : '◉'} {recording ? t('停止並辨識', 'Stop and transcribe') : t('用語音說時間', 'Record voice')}</strong><span>{t('例如：10 月 3 日晚上七點到九點可以', 'Date · time · timezone')} · 60s</span></button> : <div className="upload-tile"><strong>{t('用文字補充時間', 'Type a time correction')}</strong><span>{t('先上傳截圖，再逐項輸入時間。', 'Upload a screenshot, then type each exact time.')}</span></div>}</div>}
+    <h2>{t('你什麼時候有空？', 'When are you free?')}</h2>
+    <p>{t('選一種方式新增空檔，再確認並提交。', 'Choose a way to add your times, then review and submit.')}</p>
+    {!data && sampleUploadLabel && transport !== browserImportTransport ? <button disabled={interactionLocked} onClick={() => upload(new FormData())}>{sampleUploadLabel}</button> : !data && <div className="import-inputs availability-methods">
+      <label className="upload-tile screenshot-entry"><ImagePlus size={24} aria-hidden="true"/><strong>{t('上傳截圖', 'Upload screenshot')}</strong><span>{t('行事曆或有日期的清單', 'Calendar or dated list')}</span><input aria-label={t('上傳截圖', 'Upload screenshot')} type="file" accept="image/png,image/jpeg,image/webp" multiple disabled={interactionLocked} onChange={e => { const form = new FormData(); Array.from(e.target.files ?? []).forEach(f => form.append('images', f)); if (e.target.files?.length) void upload(form); e.target.value = ''; }} /></label>
+      <div className="voice-entry"><button type="button" disabled={busy || captureStarting || webAudioAvailable !== true} className="upload-tile" onClick={() => record()}><Mic size={24} aria-hidden="true"/><strong>{recording ? t('停止並辨識', 'Stop recording') : t('用語音說', 'Record voice')}</strong><span>{t('例如：週六晚上七點到九點有空', '“Saturday, 7 to 9 pm works.”')}</span></button>{webAudioAvailable !== true && <p role="status">{webAudioAvailable === null ? t('確認語音功能中…', 'Checking voice…') : t('語音暫不可用，請用截圖或手動選時段。', 'Voice unavailable. Use a screenshot or choose times.')}</p>}</div>
+      {onManualEntry && <button type="button" className="upload-tile" disabled={interactionLocked} onClick={onManualEntry}><Clock3 size={24} aria-hidden="true"/><strong>{t('手動選時段', 'Choose times')}</strong><span>{t('選日期、開始與結束', 'Pick a day, start and end')}</span></button>}
+    </div>}
+    {!data && <p className="import-entry-note">{t('截圖：最多 5 張、每張 5 MB。語音：最多 60 秒。私人行程不公開。', 'Screenshots: up to 5 × 5 MB. Voice: up to 60 seconds. Calendar details stay private.')}</p>}
     {(recording || captureStarting) && <div role="status" className="dining-message">{captureStarting ? t('正在開啟麥克風…', 'Opening microphone…') : t('錄音中…', 'Recording…')}<button onClick={cancelRecording}>{t('取消錄音', 'Cancel recording')}</button></div>}
     {busy && <p role="status">{t('正在處理，請保留此頁…', 'Processing…')}</p>}
     {error && <div role="alert" className="dining-message">{error}{canRetry && <button disabled={interactionLocked} onClick={() => upload()}>{t('重試上傳', 'Retry upload')}</button>}</div>}
