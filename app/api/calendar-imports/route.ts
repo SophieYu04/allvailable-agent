@@ -1,3 +1,4 @@
+import {eventFingerprint} from '@/lib/calendar/live-voice';
 import { NextResponse } from "next/server";
 import { extractTimeTree, ocrSchema } from "@/lib/ai/timetree";
 import { workersAudioBinding } from "@/lib/ai/cloudflare-audio";
@@ -17,10 +18,12 @@ export async function POST(request: Request) {
   if (process.env.AI_IMPORT_ENABLED !== "true") return jsonError(503, "AI_DISABLED", "AI 匯入目前未開放", false, id);
   const form = await request.formData();
   const images = form.getAll("images").filter((value): value is File => value instanceof File);
+  const liveTranscript = form.get('mode') === 'live_voice' ? String(form.get('transcript') ?? '').trim() : '';
+  if(form.get('mode')==='live_voice'&&(!liveTranscript||liveTranscript.length>8000||images.length))return jsonError(400,'TRANSCRIPT_INVALID','逐字稿需為 1–8000 字，且不可混合圖片');
   const audioValue = form.get("audio");
   const audio = audioValue instanceof File ? audioValue : undefined;
   if (images.length > 5) return jsonError(413, "TOO_MANY_IMAGES", "一次最多上傳 5 張圖片", false, id);
-  if (!images.length && !audio) return jsonError(400, "IMPORT_INPUT_REQUIRED", "請上傳行事曆圖片或錄音", false, id);
+  if (!images.length && !audio && !liveTranscript) return jsonError(400, "IMPORT_INPUT_REQUIRED", "請上傳行事曆圖片或錄音", false, id);
   if (images.some((file) => !imageTypes.has(file.type) || file.size > maxImageBytes) || images.reduce((sum, file) => sum + file.size, 0) > 20 * 1024 * 1024) return jsonError(415, "IMAGE_INVALID", "圖片格式或大小不符合限制", false, id);
   if (audio && (audio.size > maxAudioBytes || !["audio/webm", "audio/mp4", "audio/wav", "audio/mpeg", "audio/x-m4a"].includes(audio.type.split(";")[0]))) return jsonError(415, "AUDIO_INVALID", "錄音格式或大小不符合限制", false, id);
   const imageBytes = await Promise.all(images.map(async (file) => Buffer.from(await file.arrayBuffer())));
@@ -52,9 +55,10 @@ export async function POST(request: Request) {
   try {
     const isTimeTree = form.get("mode") === "timetree";
     if (isTimeTree && images.length !== 1) return jsonError(400, "ONE_SCREENSHOT_REQUIRED", "請一次選擇一張 TimeTree 截圖");
-    const extraction = isTimeTree ? await extractTimeTree(ocrSchema.parse(JSON.parse(String(form.get("ocr") ?? "[]"))), crypto.randomUUID()) : await analyzeImport({ sourceId: crypto.randomUUID(), images: images.length ? images.map((file, index) => ({ id: crypto.randomUUID(), dataUrl: `data:${file.type};base64,${imageBytes[index].toString("base64")}` })) : undefined, audio });
+    let extraction = isTimeTree ? await extractTimeTree(ocrSchema.parse(JSON.parse(String(form.get("ocr") ?? "[]"))), crypto.randomUUID()) : await analyzeImport({ sourceId: crypto.randomUUID(), images: images.length ? images.map((file, index) => ({ id: crypto.randomUUID(), dataUrl: `data:${file.type};base64,${imageBytes[index].toString("base64")}` })) : undefined, audio, transcript: liveTranscript || undefined });
+    if(liveTranscript)extraction={...extraction,liveVoice:{startedAt:Date.now(),calls:1,closed:false,seen:extraction.events.map(eventFingerprint)}};
     const hasUntrustedImage = images.length > 0 && (extraction.sources.length !== images.length || extraction.sources.some((source) => source.kind !== "calendar"));
-    const status = extraction.screenshotValidation?.category === "possible" ? "needs_clarification" : hasUntrustedImage || extraction.sources.length === 0 || extraction.events.length === 0 || extraction.sources.every((source) => source.kind === "unrelated")
+    const status = liveTranscript ? (extraction.questions.length?'needs_clarification':'ready') : extraction.screenshotValidation?.category === "possible" ? "needs_clarification" : hasUntrustedImage || extraction.sources.length === 0 || extraction.events.length === 0 || extraction.sources.every((source) => source.kind === "unrelated")
       ? "rejected"
       : extraction.questions.length ? "needs_clarification" : "ready";
     const { data, error } = await auth.supabase.from("calendar_imports").insert({ user_id: auth.user.id, gathering_id: gatheringId || null, source_kind: images.length ? "image" : "voice", status, extraction, version: 1, idempotency_key: quotaKey, expires_at: new Date(Date.now() + Number(process.env.AI_IMPORT_TTL_HOURS ?? 24) * 3600_000).toISOString() }).select("id,status,version,extraction,expires_at").single();

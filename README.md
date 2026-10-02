@@ -21,7 +21,7 @@ Allvailable is a scheduling agent for groups. Describe a plan, review your avail
 | Auth & data | Supabase Auth and Postgres with row-level security |
 | AI | NVIDIA Nemotron Super on Nebius Token Factory; MiniCPM for screenshot transcription |
 
-The models interpret plans, screenshots, and voice availability. Speech uses Cloudflare Whisper, followed by NVIDIA Nemotron on Nebius Token Factory. Deterministic code computes the overlap; users approve changes before submission. Model credentials stay on the server.
+The models interpret plans, screenshots, and voice availability. Supported browsers show live speech captions and send finalized phrases to NVIDIA Nemotron for review cards during recording. Cloudflare Whisper provides the confirmed-recording fallback. Deterministic code computes the overlap; users approve changes before submission. Model credentials stay on the server.
 
 ## Run locally
 
@@ -43,6 +43,6 @@ npm run build:pages
 
 ## Hackathon
 
-Built for **Nebius × NVIDIA — Best Apps and Agents**. Real text, screenshot, and voice inference have been verified. See [text and vision evidence](docs/hackathon/live-evidence-20260930.md) and [voice verification](docs/hackathon/voice-evidence-20261002.md). Final submission and video are still in preparation.
+Built for **Nebius × NVIDIA — Best Apps and Agents**. Real text, screenshot, and voice inference have been verified. See [live voice cards](docs/hackathon/live-voice-evidence-20261002.md), [text and vision evidence](docs/hackathon/live-evidence-20260930.md) and [voice verification](docs/hackathon/voice-evidence-20261002.md). Final submission and video are still in preparation.
 
 [MIT License](LICENSE)
