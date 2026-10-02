@@ -6,8 +6,8 @@ import type { Cells, SlotStatus } from "@/lib/calendar/types";
 import { useLanguage } from "./Language";
 import "./availability-entry.css";
 
-export default function AvailabilityEditor({ cells, onChange, dateStart, dateEnd, dailyStart, dailyEnd, disabled = false }: {
-  cells: Cells; onChange: (cells: Cells) => void; dateStart: string; dateEnd: string;
+export default function AvailabilityEditor({ cells, savedCells, onChange, dateStart, dateEnd, dailyStart, dailyEnd, disabled = false }: {
+  cells: Cells; savedCells?: Cells; onChange: (cells: Cells) => void; dateStart: string; dateEnd: string;
   dailyStart: string; dailyEnd: string; disabled?: boolean;
 }) {
   const { t, language } = useLanguage();
@@ -61,13 +61,14 @@ export default function AvailabilityEditor({ cells, onChange, dateStart, dateEnd
       <button type="button" className="availability-apply" disabled={disabled || !validRange} onClick={applyRange}>{t('新增這段時間', 'Add time range')}</button>
       <p className="availability-entry-notice" role="status">{notice || t('可連續新增不同狀態，完成後再提交。', 'Keep adding ranges, then submit when ready.')}</p>
     </div>
+    {savedCells && <p className="availability-save-legend">{t("深色為未儲存的修改", "Darker colors are unsaved edits")}</p>}
     <div className="availability-grid-heading"><h3>{t('檢查我的時間', 'Review my times')}</h3><p>{t('空白格填色；已填色的格子再點一次清除。', 'Tap a blank slot to fill it. Tap a colored slot to clear it.')}</p></div>
     <div className="timetable-scroll">
       <div className="timetable" style={{ gridTemplateColumns: `52px repeat(${dates.length}, minmax(72px, 1fr))` }} onPointerMove={move} onPointerUp={() => finish()} onPointerCancel={() => finish(true)} onLostPointerCapture={() => finish()}>
         <span/>{dates.map(date => <div className="timetable-date" key={date}>{dayLabel(date)}</div>)}
         {times.map((time, index) => <div className="timetable-row" key={time}>
           <span className="timetable-time">{time}</span>
-          {dates.map(date => { const status = cells[date + "-" + time] ?? "unknown"; return <button type="button" key={date} data-slot={index} data-date={date} className={"timetable-cell status-" + status} disabled={disabled}
+          {dates.map(date => { const status = cells[date + "-" + time] ?? "unknown"; return <button type="button" key={date} data-slot={index} data-date={date} className={"timetable-cell status-" + status + (savedCells && status !== (savedCells[date + "-" + time] ?? "unknown") ? " is-unsaved" : "")} disabled={disabled}
             aria-label={dayLabel(date) + " " + time + "-" + (times[index + 1] ?? dailyEnd.slice(0, 5)) + ", " + (status === "unknown" ? t("未填", "Not marked") : labels[status])}
             onPointerDown={event => {
               if (disabled || event.button !== 0) return;

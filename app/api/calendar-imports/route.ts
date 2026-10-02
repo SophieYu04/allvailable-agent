@@ -84,7 +84,7 @@ function isAnimatedImage(bytes: Buffer, type: string) {
 export async function GET(request: Request) {
   try {
     const { supabase, user } = await requireUser(request);
-    const { data, error } = await supabase.from("calendar_imports").select("id,gathering_id,status,version,extraction,expires_at,updated_at").eq("user_id", user.id).gt("expires_at", new Date().toISOString()).order("updated_at", { ascending: false });
+    const { data, error } = await supabase.from("calendar_imports").select("id,gathering_id,status,version,extraction,expires_at,updated_at,idempotency_key").eq("user_id", user.id).gt("expires_at", new Date().toISOString()).order("updated_at", { ascending: false });
     if (error) return jsonError(500, "IMPORT_LIST_FAILED", "無法讀取待恢復匯入", true);
     const audio = [process.env.NEBIUS_AUDIO_API_KEY, process.env.NEBIUS_AUDIO_BASE_URL, process.env.NEBIUS_AUDIO_MODEL];
     return NextResponse.json({ imports: data ?? [], webAudioAvailable: process.env.AI_IMPORT_ENABLED === "true" && (Boolean(await workersAudioBinding()) || audio.every(Boolean)) });

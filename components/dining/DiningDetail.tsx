@@ -47,6 +47,9 @@ export default function DiningDetail({ token, gatheringId }: { token?: string; g
   const [accessUnavailable, setAccessUnavailable] = useState(false);
   const [joined, setJoined] = useState(false);
   const [cells, setCells] = useState<Cells>({});
+  const [savedCells, setSavedCells] = useState<Cells>({});
+  const [savedVersion, setSavedVersion] = useState("1");
+  const dirty = [...new Set([...Object.keys(cells), ...Object.keys(savedCells)])].some(key => (cells[key] ?? "unknown") !== (savedCells[key] ?? "unknown"));
   const [version, setVersion] = useState("1");
   const [message, setMessage] = useState("");
   const [working, setWorking] = useState(false);
@@ -101,6 +104,7 @@ export default function DiningDetail({ token, gatheringId }: { token?: string; g
     if (epoch !== loadEpoch.current) return;
     setVersion(String(draft.version));
     setCells(draft.cells);
+    setSavedCells(draft.cells); setSavedVersion(String(draft.version));
     setConflict(false);
     const storageKey = `yuema.web-draft.${id}.${details.id}`;
     try {
@@ -148,6 +152,7 @@ export default function DiningDetail({ token, gatheringId }: { token?: string; g
     await act(async () => {
       const draft = await api(`/api/v1/coordination/${gathering.id}/draft`, "PATCH", { expectedVersion: version, cells });
       setVersion(String(draft.version));
+      setSavedCells(cells); setSavedVersion(String(draft.version));
       if (key) try { localStorage.setItem(key, JSON.stringify({ cells, version: String(draft.version) })); } catch {}
       if (submit) {
         const changes = Object.entries(cells).map(([key, status]) => ({ date: key.slice(0, 10), minute: Number(key.slice(11, 13)) * 60 + Number(key.slice(14)), status }));
@@ -176,19 +181,24 @@ export default function DiningDetail({ token, gatheringId }: { token?: string; g
           if (locked || conflict || lock.current) throw new Error(t('請先處理草稿衝突或截止狀態','Resolve draft conflicts before previewing'));
           const saved = await api(`/api/v1/coordination/${gathering.id}/draft`, 'PATCH', {expectedVersion:version,cells});
           setVersion(String(saved.version));
+          setSavedCells(cells); setSavedVersion(String(saved.version));
           if (key) try { localStorage.setItem(key, JSON.stringify({cells,version:String(saved.version)})); } catch {}
           return String(saved.version);
         }} onApplied={(next, nextVersion) => {
-          setCells(next); setVersion(nextVersion ?? version); setBlankPreview(null);
+          setCells(next); setSavedCells(next); setSavedVersion(nextVersion ?? version); setVersion(nextVersion ?? version); setBlankPreview(null);
           if (key) try { localStorage.setItem(key,JSON.stringify({cells:next,version:nextVersion ?? version})); } catch {}
           setMessage(t('已加入草稿，請確認空檔後正式提交','Saved to draft. Review availability, then submit.'));
           replyActions.current?.scrollIntoView({ behavior: 'auto', block: 'center' });
           replyActions.current?.focus({ preventScroll: true });
         }}/>
         <section ref={manualEntry} tabIndex={-1} className="manual-entry-focus">
-        <AvailabilityEditor cells={cells} onChange={edit} dateStart={gathering.date_start} dateEnd={gathering.date_end} dailyStart={gathering.daily_start} dailyEnd={gathering.daily_end} disabled={working || conflict || importActive}/>
+        <AvailabilityEditor cells={cells} savedCells={savedCells} onChange={edit} dateStart={gathering.date_start} dateEnd={gathering.date_end} dailyStart={gathering.daily_start} dailyEnd={gathering.daily_end} disabled={working || conflict || importActive}/>
         <details className="blank-confirm"><summary>{t('其他填寫選項','More options')}</summary><p>{t('僅限以下範圍：','Only within:')} {gathering.date_start} → {gathering.date_end} · {gathering.daily_start.slice(0,5)}-{gathering.daily_end.slice(0,5)}</p><button disabled={working || conflict || importActive} onClick={() => setBlankPreview(dateList(gathering.date_start,gathering.date_end).flatMap(d=>times.map(time=>`${d}-${time}`)).filter(k=>!cells[k] || cells[k]==='unknown'))}>{t('此範圍其他空白都可以 → 預覽','Remaining blanks are available → Preview')}</button>{blankPreview && <><p>{blankPreview.length} {t('個未填時段將設為可以；已填時段不變。','unknown slots will become available; existing entries stay unchanged.')}</p><div className="import-change-list">{blankPreview.map(k=><p key={k}>{k} · {t('未填 → 可以','Unknown → Available')}</p>)}</div><button disabled={working || conflict || importActive} onClick={()=>{edit({...cells,...Object.fromEntries(blankPreview.filter(k=>!cells[k] || cells[k]==='unknown').map(k=>[k,'green' as const]))});setBlankPreview(null);}}>{t('確認套用到草稿','Apply to draft')}</button><button onClick={()=>setBlankPreview(null)}>{t('取消','Cancel')}</button></>}</details>
-        <div ref={replyActions} tabIndex={-1} className="draft-submit-actions"><button disabled={working || conflict || importActive} onClick={() => save(false)}>{t("儲存草稿", "Save draft")}</button><button className="button primary" disabled={working || conflict || importActive} onClick={() => save(true)}>{t("提交我的空檔", "Submit availability")}</button></div></section></section></div>
+        <div ref={replyActions} tabIndex={-1} className="draft-submit-actions"><button disabled={working || importActive || !dirty} onClick={() => {
+          setCells(savedCells); setVersion(savedVersion); setConflict(false); setBlankPreview(null);
+          if (key) try { localStorage.setItem(key, JSON.stringify({cells:savedCells,version:savedVersion})); } catch {}
+          setMessage(t('已還原至最近儲存的草稿', 'Restored your saved draft.'));
+        }}>{t('還原已儲存草稿', 'Revert to saved draft')}</button><button disabled={working || conflict || importActive} onClick={() => save(false)}>{t("儲存草稿", "Save draft")}</button><button className="button primary" disabled={working || conflict || importActive} onClick={() => save(true)}>{t("提交我的空檔", "Submit availability")}</button></div></section></section></div>
       </>}
       <GatheringManager gathering={gathering} reload={()=>load()} host={gathering.host_id===userId} expired={new Date(gathering.deadline_at).getTime()<=now} disabled={working||importActive} onLeave={()=>router.push("/")}/>
       <section className="reply-roster"><h2>{t('回覆進度','Replies')} <span>{gathering.availability_submissions?.length ?? 0}/{gathering.memberships?.filter(m=>m.status==='joined').length ?? 0}</span></h2><ul>{gathering.memberships?.filter(m=>m.status==='joined').map(m=><li key={m.user_id}><span>{m.display_name}{m.user_id===gathering.host_id?' · '+t('主揪','Host'):''}{m.user_id===userId?' · '+t('你','You'):''}</span><span>{gathering.availability_submissions?.some(s=>s.user_id===m.user_id)?t('已提交','Submitted'):t('待回覆','Pending')}</span></li>)}</ul></section>

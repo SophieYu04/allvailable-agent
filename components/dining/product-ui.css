@@ -156,3 +156,9 @@ body:has(.dining),body:has(.dining-login),body:has(.legal-page){background:#f6f8
 .dining .manual-entry-focus .blank-confirm{padding:12px 0 0;margin-top:20px}
 .dining .manual-entry-focus .blank-confirm>summary{padding:8px 0;color:var(--muted)}
 main.dining[tabindex="-1"]:focus{outline:none}
+
+.dining .timetable-cell.status-green.is-unsaved{background:#43815c;color:#fff}
+.dining .timetable-cell.status-yellow.is-unsaved{background:#b58c26;color:#fff}
+.dining .timetable-cell.status-red.is-unsaved{background:#b35f59;color:#fff}
+.dining .timetable-cell.status-unknown.is-unsaved{background:#fff;box-shadow:inset 0 0 0 2px #657568;background-image:repeating-linear-gradient(135deg,transparent,transparent 6px,#65756822 6px,#65756822 8px)}
+.availability-save-legend{font-size:.8rem;color:#637269;margin:12px 0}

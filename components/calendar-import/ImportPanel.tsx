@@ -27,6 +27,10 @@ export default function ImportPanel({ compact = false, onManualEntry, transport 
   const cardHeading = useRef<HTMLHeadingElement | null>(null);
   const reviewSummary = useRef<HTMLParagraphElement | null>(null);
   const mutex = useRef(false);
+  const operationEpoch = useRef(0);
+  const uploadController = useRef<AbortController | null>(null);
+  const cancelledUploads = useRef(new Set<string>());
+  const [uploading, setUploading] = useState(false);
   const alive = useRef(true);
   const interactionLocked = busy || recording || captureStarting;
   const status = (s: string) => ({ green: t('可以', 'Available'), red: t('忙碌', 'Busy'), yellow: t('待確認', 'Tentative'), unknown: t('未填', 'Unknown') }[s] ?? s);
@@ -34,15 +38,17 @@ export default function ImportPanel({ compact = false, onManualEntry, transport 
   useEffect(() => { onActivity?.(busy || recording || captureStarting || Boolean(data)); }, [busy, recording, captureStarting, data, onActivity]);
   useEffect(() => {
     alive.current = true;
+    const epochRef = operationEpoch;
     let cancelled = false;
+    try { cancelledUploads.current = new Set(JSON.parse(localStorage.getItem('allvailable.cancelledUploads') ?? '[]')); } catch {}
     transport('/api/calendar-imports').then(async r => {
       if (!r.ok) { if (!cancelled) setWebAudioAvailable(false); return; }
-      const body = await r.json() as { imports?: (ImportData & {id:string;gathering_id?:string;expires_at:string})[]; webAudioAvailable?: boolean };
+      const body = await r.json() as { imports?: (ImportData & {id:string;gathering_id?:string;expires_at:string;idempotency_key?:string})[]; webAudioAvailable?: boolean };
       if (!cancelled) setWebAudioAvailable(body.webAudioAvailable === true);
-      const saved = body.imports?.find((item: { gathering_id?: string }) => gatheringId ? item.gathering_id === gatheringId : !item.gathering_id);
+      const saved = body.imports?.find(item => !cancelledUploads.current.has(item.idempotency_key ?? '') && (gatheringId ? item.gathering_id === gatheringId : !item.gathering_id));
       if (!cancelled && saved && !pending.current && !mutex.current) setData({ ...saved, importId: saved.id, version: String(saved.version), expiresAt: saved.expires_at });
     }).catch(() => { if (!cancelled) setWebAudioAvailable(false); });
-    return () => { cancelled = true; alive.current = false; capture.current?.cancel(); };
+    return () => { cancelled = true; alive.current = false; ++epochRef.current; uploadController.current?.abort(); capture.current?.cancel(); };
   }, [gatheringId, transport]);
   async function request<T = Record<string, unknown>>(path: string, body?: unknown, method = 'POST') {
     const r = await transport(path, { method, headers: { 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) });
@@ -52,23 +58,37 @@ export default function ImportPanel({ compact = false, onManualEntry, transport 
   }
   async function run(action: () => Promise<void>) {
     if (mutex.current || capture.current?.isActive()) return;
+    const operation = ++operationEpoch.current;
     mutex.current = true; setBusy(true); setError('');
-    try { await action(); } catch (e) { if (alive.current) setError(e instanceof Error ? e.message : t('操作失敗', 'Request failed')); }
-    finally { mutex.current = false; if (alive.current) setBusy(false); }
+    try { await action(); } catch (e) { if (alive.current && operation === operationEpoch.current) setError(e instanceof Error ? e.message : t('操作失敗', 'Request failed')); }
+    finally { if (operation === operationEpoch.current) { mutex.current = false; if (alive.current) setBusy(false); } }
   }
   async function upload(form?: FormData) {
     if (mutex.current || capture.current?.isActive()) return;
     if (form) { if (gatheringId) form.set('gatheringId', gatheringId); pending.current = { form, key: crypto.randomUUID() }; setCanRetry(true); }
     const item = pending.current; if (!item) return;
+    const controller = new AbortController();
+    uploadController.current = controller; setUploading(true);
     await run(async () => {
-      const r = await transport('/api/calendar-imports', { method: 'POST', headers: { 'Idempotency-Key': item.key }, body: item.form });
+      const r = await transport('/api/calendar-imports', { method: 'POST', headers: { 'Idempotency-Key': item.key }, body: item.form, signal: controller.signal });
       const body = await r.json() as ImportData & {error?:{message?:string}};
       if (!r.ok) throw new Error(body.error?.message ?? t('上傳失敗，檔案已保留', 'Upload failed. Your files are retained.'));
-      if (!alive.current) return;
+      if (!alive.current || controller.signal.aborted) return;
       setData(body); setPreview(null); setSelected([]); setAnswers({}); pending.current = null; setCanRetry(false);
       const first = body.extraction.visibleRanges?.[0];
       if (!dateStart && first) setRange({ startDate: first.startDate, endDate: first.endDate });
     });
+    if (uploadController.current === controller) { uploadController.current = null; if (alive.current) setUploading(false); }
+  }
+  function cancelUpload() {
+    ++operationEpoch.current;
+    uploadController.current?.abort(); uploadController.current = null;
+    mutex.current = false; setUploading(false); setBusy(false); setError('');
+    if (pending.current) {
+      cancelledUploads.current.add(pending.current.key);
+      try { localStorage.setItem('allvailable.cancelledUploads', JSON.stringify([...cancelledUploads.current].slice(-100))); } catch {}
+    }
+    pending.current = null; setCanRetry(false);
   }
   function cancelRecording() { capture.current?.cancel(); setRecording(false); setCaptureStarting(false); setRecordingQuestion(undefined); }
   async function record(questionId?: string) {
@@ -150,7 +170,7 @@ export default function ImportPanel({ compact = false, onManualEntry, transport 
     </div>}
     {!data && <p className="import-entry-note">{compact ? t('或直接在下方選時段。', 'Or choose your times below.') : t('截圖：最多 5 張、每張 5 MB。私人行程不公開。', 'Screenshots: up to 5 × 5 MB. Calendar details stay private.')}</p>}
     {(recording || captureStarting) && <div role="status" className="dining-message">{captureStarting ? t('正在開啟麥克風…', 'Opening microphone…') : t('錄音中…', 'Recording…')}<button onClick={cancelRecording}>{t('取消錄音', 'Cancel recording')}</button></div>}
-    {busy && <p role="status">{t('正在處理，請保留此頁…', 'Processing…')}</p>}
+    {busy && <div className="dining-actions"><p role="status">{t('正在處理…', 'Processing…')}</p>{uploading && <button type="button" onClick={cancelUpload}>{t('取消', 'Cancel')}</button>}</div>}
     {error && <div role="alert" className="dining-message">{error}{canRetry && <button disabled={interactionLocked} onClick={() => upload()}>{t('重試上傳', 'Retry upload')}</button>}</div>}
     {data && <>{data.extraction.transcript && <details className="voice-transcript"><summary>{t('語音逐字稿', 'Transcript')}</summary><p>{data.extraction.transcript}</p></details>}<p className="dining-eyebrow">02 / {t('確認辨識', 'REVIEW')}</p>
       {data.status === 'rejected' ? <p>{t('沒有辨識到日期或空檔，請重試或直接選時段。', 'No dates or availability recognized. Try again or choose times below.')}</p> : <>
