@@ -53,3 +53,15 @@ describe('calendar context voice commands', () => {
     expect(deterministicCorrection('確認事件', context)?.intent).toBe('confirm_event');
   });
 });
+
+it('allows status edits without silently confirming the card', () => {
+  const next = editDraft(draft, 'edit_event', 'piano', { intent: 'tentative', reviewed: false });
+  expect(next.events[0]).toMatchObject({intent:'tentative',userConfirmed:false,startTime:'15:00'});
+  expect(draft.events[0].intent).toBe('busy');
+});
+it('can confirm unnamed availability while preserving title checks for busy events', () => {
+  const available = {...draft,events:[{...draft.events[0],label:null,intent:'available' as const,userConfirmed:false}]};
+  const confirmed = editDraft(available,'edit_event','piano',{reviewed:true});
+  expect(confirmed.events[0].unresolved).toEqual([]);
+  expect(editDraft(available,'edit_event','piano',{intent:'busy'}).events[0].unresolved).toContain('title');
+});

@@ -177,7 +177,11 @@ export default function DiningDetail({ token, gatheringId }: { token?: string; g
     {gathering && (joined || gathering.host_id===userId) && <>
       {!joined ? <p>{t("你目前只管理飯局。可在主揪設定選擇參加。","You are managing this gathering. Join from Host controls.")}</p> : locked ? <p>{t("填寫已鎖定 ·", "Replies closed ·")}{gathering.status === "draft" ? t("發布後即可填寫", "Publish to open replies") : gathering.status === "cancelled" ? t("已取消", "Cancelled") : gathering.status === "finalized" ? t("已拍板", "Finalized") : t("已截止", "Deadline passed")}</p> : <>
         <div className="dining-workspace"><section ref={availabilityEntry} tabIndex={-1} className="manual-panel availability-unified" aria-label={t('我的空檔','My availability')}><h2>{t('我的空檔','My availability')}</h2>
-        <ImportPanel compact gatheringId={gathering.id} dateStart={gathering.date_start} dateEnd={gathering.date_end} draftVersion={version} currentCells={cells} onActivity={setImportActive} beforePreview={async () => {
+        <ImportPanel compact dailyStart={gathering.daily_start.slice(0,5)} dailyEnd={gathering.daily_end.slice(0,5)} onCardApplied={next => {
+          setCells(next); setBlankPreview(null);
+          if (key) try { localStorage.setItem(key,JSON.stringify({cells:next,version})); } catch {}
+          setMessage(t('卡片已加入時間表，尚未儲存', 'Card added to timetable. Save your draft when ready.'));
+        }} gatheringId={gathering.id} dateStart={gathering.date_start} dateEnd={gathering.date_end} draftVersion={version} currentCells={cells} onActivity={setImportActive} beforePreview={async () => {
           if (locked || conflict || lock.current) throw new Error(t('請先處理草稿衝突或截止狀態','Resolve draft conflicts before previewing'));
           const saved = await api(`/api/v1/coordination/${gathering.id}/draft`, 'PATCH', {expectedVersion:version,cells});
           setVersion(String(saved.version));

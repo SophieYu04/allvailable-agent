@@ -9,6 +9,7 @@ const zone = z.string().refine(value => { try { new Intl.DateTimeFormat('en', { 
 export const draftChangesSchema = z.object({
   title: z.string().trim().min(1).max(200).optional(), date: date.optional(), endDate: date.optional(),
   startTime: timeSchema.optional(), endTime: timeSchema.optional(),
+  intent: z.enum(['busy','available','tentative']).optional(),
   sourceTimezone: zone.optional(), allDay: z.boolean().optional(),
   reviewed: z.boolean().optional(), delete: z.boolean().optional(),
 }).strict();
@@ -31,6 +32,7 @@ export function editDraft(extraction: Extraction, action: 'edit_event' | 'add_ev
     intent: 'busy' as const, startDate: null, endDate: null, startTime: null, endTime: null,
     sourceTimezone: null, allDay: false, recurrence: null, unresolved: [],
   };
+  if (changes.intent !== undefined) event.intent = changes.intent;
   if (changes.title !== undefined) event.label = changes.title;
   if (changes.date !== undefined) {
     // Preserve an explicitly recognized cross-day span when only the start date moves.
@@ -50,8 +52,9 @@ export function editDraft(extraction: Extraction, action: 'edit_event' | 'add_ev
   event.userConfirmed = changes.reviewed === true;
   event.unresolved = changes.reviewed ? [] : event.unresolved.filter(field =>
     !(field === 'date' && changes.date) && !(field === 'time' && event.startTime && event.endTime) &&
+    !(field === 'all_day' && changes.allDay !== undefined) && !(field === 'intent' && changes.intent) &&
     !(field === 'timezone' && changes.sourceTimezone) && !(field === 'title' && changes.title));
-  if (!event.label) event.unresolved.push('title');
+  if (!event.label && event.intent !== 'available') event.unresolved.push('title');
   if (!event.startDate || !event.endDate) event.unresolved.push('date');
   if (!event.allDay && (!event.startTime || !event.endTime)) event.unresolved.push('time');
   if (!event.sourceTimezone) event.unresolved.push('timezone');
