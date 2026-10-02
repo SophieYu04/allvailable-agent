@@ -25,6 +25,7 @@ export const extractedEventSchema = z.object({
 });
 
 export const extractionSchema = z.object({
+  transcript: z.string().max(20000).optional(),
   screenshotValidation: z.object({ category: z.enum(["calendar", "possible", "non_calendar"]), confidence: z.number().min(0).max(1), layout: z.string(), reason: z.string() }).optional(),
   sources: z.array(z.object({ id: z.string(), kind: z.enum(["calendar", "schedule_voice", "unrelated", "uncertain"]), reason: z.string().nullable() })),
   events: z.array(extractedEventSchema),

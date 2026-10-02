@@ -6,7 +6,7 @@ export async function analyzeImport(input: { images?: Array<{ id: string; dataUr
   if (input.images?.length) return normalizeModelExtraction(await extractCalendarImages(input.images));
   if (!input.audio) throw new Error("IMPORT_INPUT_REQUIRED");
   const transcript = await transcribeAudio(input.audio);
-  return normalizeModelExtraction(await extractCalendarText(transcript));
+  return { ...normalizeModelExtraction(await extractCalendarText(transcript)), transcript };
 }
 
 export async function analyzeClarificationVoice(input: Blob, question: { prompt: string; options?: string[] }) {

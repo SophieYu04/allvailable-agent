@@ -23,6 +23,7 @@ const localBindingConfig = {
   compatibility_date: "2026-05-15",
   main: "vinext/server/fetch-handler",
   compatibility_flags: ["nodejs_compat"],
+  ...(process.env.CLOUDFLARE_AUDIO_ENABLED === "true" ? { ai: { binding: "AI" } } : {}),
   d1_databases: d1
     ? [
         {

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { extractTimeTree, ocrSchema } from "@/lib/ai/timetree";
+import { workersAudioBinding } from "@/lib/ai/cloudflare-audio";
 import { providerConfig } from "@/lib/ai/config";
 import { analyzeImport } from "@/lib/ai/service";
 import { requireUser } from "@/lib/server/auth";
@@ -31,7 +32,7 @@ export async function POST(request: Request) {
   }
   try {
     if (images.length && form.get("mode") !== "timetree") providerConfig("vision");
-    else { providerConfig("text"); if (audio) providerConfig("audio"); }
+    else { providerConfig("text"); if (audio && !(await workersAudioBinding())) providerConfig("audio"); }
   } catch (error) {
     const code = error instanceof Error ? error.message : "NEBIUS_NOT_CONFIGURED";
     return jsonError(503, code.endsWith("NOT_CONFIGURED") ? code : "NEBIUS_INVALID_ENDPOINT", "此輸入的 AI 模型尚未設定 / This AI input is not configured. Please use manual entry.", false, id);
@@ -61,7 +62,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ importId: data.id, status: data.status, version: String(data.version), extraction: data.extraction, expiresAt: data.expires_at, requestId: id });
   } catch (error) {
     const code = error instanceof Error ? error.message : "AI_FAILED";
-    return jsonError(code.endsWith("NOT_CONFIGURED") ? 503 : code.startsWith("NEBIUS") ? 502 : 422, code.startsWith("NEBIUS") ? code : "AI_INVALID_RESPONSE", code.endsWith("NOT_CONFIGURED") ? "此輸入的 AI 模型尚未設定，請先手動填寫。 / This AI input is not configured. Please use manual entry." : "辨識失敗，輸入已保留，可重試或手動填寫。 / Recognition failed. Retry or use manual entry.", !code.endsWith("NOT_CONFIGURED"), id);
+    return jsonError(code.endsWith("NOT_CONFIGURED") ? 503 : (code.startsWith("NEBIUS") || code.startsWith("CLOUDFLARE_AUDIO")) ? 502 : 422, (code.startsWith("NEBIUS") || code.startsWith("CLOUDFLARE_AUDIO") || code === "AUDIO_NO_SPEECH") ? code : "AI_INVALID_RESPONSE", code.endsWith("NOT_CONFIGURED") ? "此輸入的 AI 模型尚未設定，請先手動填寫。 / This AI input is not configured. Please use manual entry." : "辨識失敗，輸入已保留，可重試或手動填寫。 / Recognition failed. Retry or use manual entry.", !code.endsWith("NOT_CONFIGURED"), id);
   } finally {
     await auth.supabase.rpc("release_ai_request", { p_request_id: activeRequestId });
   }
@@ -86,6 +87,6 @@ export async function GET(request: Request) {
     const { data, error } = await supabase.from("calendar_imports").select("id,gathering_id,status,version,extraction,expires_at,updated_at").eq("user_id", user.id).gt("expires_at", new Date().toISOString()).order("updated_at", { ascending: false });
     if (error) return jsonError(500, "IMPORT_LIST_FAILED", "無法讀取待恢復匯入", true);
     const audio = [process.env.NEBIUS_AUDIO_API_KEY, process.env.NEBIUS_AUDIO_BASE_URL, process.env.NEBIUS_AUDIO_MODEL];
-    return NextResponse.json({ imports: data ?? [], webAudioAvailable: audio.every(Boolean) });
+    return NextResponse.json({ imports: data ?? [], webAudioAvailable: process.env.AI_IMPORT_ENABLED === "true" && (Boolean(await workersAudioBinding()) || audio.every(Boolean)) });
   } catch { return jsonError(401, "UNAUTHENTICATED", "請先登入"); }
 }

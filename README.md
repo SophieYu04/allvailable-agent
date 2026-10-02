@@ -9,7 +9,7 @@ Allvailable is a scheduling agent for groups. Describe a plan, review your avail
 ## How it works
 
 1. **Plan:** describe a gathering in English or Chinese. Review the AI-generated invitation and share its link or six-digit code.
-2. **Review:** mark availability manually or import a calendar screenshot. Confirm extracted events and fill in missing details.
+2. **Review:** choose times, upload a calendar screenshot, or record your availability. Confirm extracted events and fill in missing details.
 3. **Meet:** submit availability and compare shared time slots. Unknown or unsubmitted time never counts as free.
 
 ## Built with
@@ -21,7 +21,7 @@ Allvailable is a scheduling agent for groups. Describe a plan, review your avail
 | Auth & data | Supabase Auth and Postgres with row-level security |
 | AI | NVIDIA Nemotron Super on Nebius Token Factory; MiniCPM for screenshot transcription |
 
-The models interpret plans and screenshots. Deterministic code computes the overlap; users approve changes before submission. Model credentials stay on the server.
+The models interpret plans, screenshots, and voice availability. Speech uses Cloudflare Whisper, followed by NVIDIA Nemotron on Nebius Token Factory. Deterministic code computes the overlap; users approve changes before submission. Model credentials stay on the server.
 
 ## Run locally
 
@@ -43,6 +43,6 @@ npm run build:pages
 
 ## Hackathon
 
-Built for **Nebius × NVIDIA — Best Apps and Agents**. Real text and screenshot inference has been verified; [evidence and limitations](docs/hackathon/live-evidence-20260930.md) are documented. Browser voice input is not available. Final submission and video are still in preparation.
+Built for **Nebius × NVIDIA — Best Apps and Agents**. Real text, screenshot, and voice inference have been verified. See [text and vision evidence](docs/hackathon/live-evidence-20260930.md) and [voice verification](docs/hackathon/voice-evidence-20261002.md). Final submission and video are still in preparation.
 
 [MIT License](LICENSE)
