@@ -199,3 +199,6 @@ main.dining[tabindex="-1"]:focus{outline:none}
 .import-switch-dialog h3 { margin: 0 0 20px; }
 
 .import-switch-dialog::backdrop { background: #0005; }
+.import-switch-dialog .dining-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.import-switch-dialog .dining-actions button { min-height: 44px; padding: 10px 16px; border: 1px solid #dce5df; border-radius: 10px; background: #fff; color: #233c31; cursor: pointer; }
+.import-switch-dialog .dining-actions button:first-child { background: #215f50; border-color: #215f50; color: #fff; }
