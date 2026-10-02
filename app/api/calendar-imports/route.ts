@@ -39,7 +39,7 @@ export async function POST(request: Request) {
   if (gatheringId) {
     const {data: membership, error: membershipError} = await auth.supabase.from("memberships").select("user_id").eq("gathering_id", gatheringId).eq("user_id", auth.user.id).eq("status", "joined").maybeSingle();
     if (membershipError || !membership) return jsonError(403, "MEMBERSHIP_REQUIRED", "請先加入邀約 / Join this invitation before importing", false, id);
-    if(images.length){const {data:gathering}=await auth.supabase.from('gatherings').select('date_start,date_end').eq('id',gatheringId).single();if(gathering)imageContext={timezone:'Asia/Taipei',dateStart:gathering.date_start,dateEnd:gathering.date_end};}
+    {const {data:gathering}=await auth.supabase.from('gatherings').select('date_start,date_end').eq('id',gatheringId).single();if(gathering)imageContext={timezone:'Asia/Taipei',dateStart:gathering.date_start,dateEnd:gathering.date_end};}
   }
   try {
     if (images.length && form.get("mode") !== "timetree") providerConfig("vision");
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
     return jsonError(503, code.endsWith("NOT_CONFIGURED") ? code : "NEBIUS_INVALID_ENDPOINT", "此輸入的 AI 模型尚未設定 / This AI input is not configured. Please use manual entry.", false, id);
   }
   const quotaKey = request.headers.get("Idempotency-Key") ?? id;
-  const { data: quota, error: quotaError } = await auth.supabase.rpc("consume_ai_quota", { p_idempotency_key: quotaKey, p_user_limit: Number(process.env.AI_DAILY_USER_LIMIT ?? 3), p_global_limit: Number(process.env.AI_DAILY_GLOBAL_LIMIT ?? 30) });
+  const { data: quota, error: quotaError } = await auth.supabase.rpc("consume_ai_quota", { p_idempotency_key: quotaKey, p_user_limit: Number(process.env.AI_DAILY_USER_LIMIT ?? 3), p_global_limit: Number(process.env.AI_DAILY_GLOBAL_LIMIT ?? 120) });
   if (quotaError) return jsonError(503, "QUOTA_UNAVAILABLE", "目前無法確認 AI 用量，請稍後重試", true, id);
   if (!(quota as { allowed?: boolean } | null)?.allowed) return jsonError(429, "AI_QUOTA_EXCEEDED", "今日 AI 匯入次數已用完，請改用手動填寫", false, id);
   if ((quota as { replayed?: boolean } | null)?.replayed) {
@@ -63,8 +63,8 @@ export async function POST(request: Request) {
   try {
     const isTimeTree = form.get("mode") === "timetree";
     if (isTimeTree && images.length !== 1) return jsonError(400, "ONE_SCREENSHOT_REQUIRED", "請一次選擇一張 TimeTree 截圖");
-    let extraction = isTimeTree ? await extractTimeTree(ocrSchema.parse(JSON.parse(String(form.get("ocr") ?? "[]"))), crypto.randomUUID()) : await analyzeImport({ sourceId: crypto.randomUUID(), images: images.length ? images.map((file, index) => ({ id: crypto.randomUUID(),geometry:imageGeometry[index], dataUrl: `data:${file.type};base64,${imageBytes[index].toString("base64")}` })) : undefined, audio, imageContext, transcript: liveTranscript || undefined });
-    if(liveTranscript)extraction={...extraction,liveVoice:{startedAt:Date.now(),calls:1,closed:false,seen:extraction.events.map(eventFingerprint)}};
+    let extraction = isTimeTree ? await extractTimeTree(ocrSchema.parse(JSON.parse(String(form.get("ocr") ?? "[]"))), crypto.randomUUID()) : await analyzeImport({ sourceId: crypto.randomUUID(), images: images.length ? images.map((file, index) => ({ id: crypto.randomUUID(),geometry:imageGeometry[index], dataUrl: `data:${file.type};base64,${imageBytes[index].toString("base64")}` })) : undefined, audio, imageContext, speechContext:imageContext, transcript: liveTranscript || undefined });
+    if(liveTranscript){const events=extraction.events.filter(e=>e.intent!=='uncertain'&&(e.allDay===true||e.startTime&&e.endTime));const ids=new Set(events.map(e=>e.id));extraction={...extraction,events,questions:extraction.questions.filter(q=>q.eventId&&ids.has(q.eventId)),liveVoice:{startedAt:Date.now(),calls:1,closed:false,seen:events.map(eventFingerprint)}};}
     const hasUntrustedImage = images.length > 0 && (extraction.sources.length !== images.length || extraction.sources.some((source) => source.kind !== "calendar"));
     const status = liveTranscript ? (extraction.questions.length?'needs_clarification':'ready') : extraction.screenshotValidation?.category === "possible" ? "needs_clarification" : hasUntrustedImage || extraction.sources.length === 0 || extraction.events.length === 0 || extraction.sources.every((source) => source.kind === "unrelated")
       ? "rejected"

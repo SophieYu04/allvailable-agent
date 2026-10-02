@@ -19,7 +19,7 @@ try {
  sql('tests/database/bootstrap.sql');
  const migrations=readdirSync('supabase/migrations').filter(f=>f.endsWith('.sql')).sort();
  for(const file of migrations)sql(join('supabase/migrations',file));
- const suites=['roadmap.sql','productivity.sql','lifecycle.sql'];
+ const suites=['roadmap.sql','productivity.sql','lifecycle.sql','ai-quota.sql'];
  for(const file of suites){writeFileSync(join(root,file+'.log'),sql(join('tests/database',file)));console.log('PASS '+file);}
  console.log(JSON.stringify({migrations:migrations.length,suites:suites.length,localOnly:true,logs:root}));
 } catch(error) {

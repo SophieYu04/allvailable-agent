@@ -47,14 +47,14 @@ export function editDraft(extraction: Extraction, action: 'edit_event' | 'add_ev
   if (changes.allDay !== undefined) event.allDay = changes.allDay;
   if (changes.reviewed) {
     if (event.intent === 'uncertain') event.intent = 'busy';
-    event.recurrence = null;
+    // Keep bounded voice recurrence so confirmation applies every selected day.
   }
   event.userConfirmed = changes.reviewed === true;
   event.unresolved = changes.reviewed ? [] : event.unresolved.filter(field =>
     !(field === 'date' && changes.date) && !(field === 'time' && event.startTime && event.endTime) &&
     !(field === 'all_day' && changes.allDay !== undefined) && !(field === 'intent' && changes.intent) &&
     !(field === 'timezone' && changes.sourceTimezone) && !(field === 'title' && changes.title));
-  if (!event.label && event.intent !== 'available') event.unresolved.push('title');
+  if (!event.label && event.intent !== 'available' && !extraction.sources.some(source=>event.sourceIds.includes(source.id)&&source.kind==='schedule_voice')) event.unresolved.push('title');
   if (!event.startDate || !event.endDate) event.unresolved.push('date');
   if (!event.allDay && (!event.startTime || !event.endTime)) event.unresolved.push('time');
   if (!event.sourceTimezone) event.unresolved.push('timezone');

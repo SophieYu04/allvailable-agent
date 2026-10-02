@@ -6,12 +6,12 @@ const fields = new Set(['title', 'date', 'time', 'timezone', 'all_day']);
 /** Model notes cannot become unanswerable blockers. Every ambiguity gets a reviewable field. */
 export function normalizeModelExtraction(extraction: Extraction): Extraction {
   const events = extraction.events.map(event => {
-    const unknownNote = event.unresolved.some(field => !fields.has(field));
+    const unknownNote = event.unresolved.some(field => !fields.has(field) && field!=='intent');
     return {
       ...event,
       // Unknown semantics require the user to choose whether this is an actual busy item.
       intent: unknownNote && event.intent !== 'reminder' ? 'uncertain' as const : event.intent,
-      unresolved: event.unresolved.filter(field => fields.has(field)),
+      unresolved: event.unresolved.filter(field => fields.has(field) && !(field==='title' && extraction.sources.some(source=>event.sourceIds.includes(source.id)&&source.kind==='schedule_voice'))),
       userConfirmed: false,
     };
   });

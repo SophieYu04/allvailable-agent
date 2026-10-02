@@ -1,0 +1,5 @@
+import {expect,it} from 'vitest';import {visualFallback} from './visual-fallback';
+const source={id:'image',kind:'calendar' as const,confidence:.98,events:[{label:'Dinner',startDate:'2026-10-07',endDate:'2026-10-07',startTime:'19:00',endTime:'20:00',allDay:false}]};
+it('keeps verified observed times as an unconfirmed busy candidate',()=>{expect(visualFallback([source],'Asia/Taipei')?.events[0]).toMatchObject({startTime:'19:00',endTime:'20:00',intent:'busy',userConfirmed:false,unresolved:[]});});
+it('never repairs low-confidence images or non-calendar text by inventing events',()=>{expect(visualFallback([{...source,kind:'non_calendar'}],'Asia/Taipei')).toBeNull();expect(visualFallback([{...source,confidence:.6}],'Asia/Taipei')).toBeNull();});
+it('leaves impossible dates and unknown times for review',()=>{expect(visualFallback([{...source,events:[{...source.events[0],startDate:'2026-02-30',startTime:null}]}],'Asia/Taipei')?.events[0]).toMatchObject({startDate:null,startTime:null,unresolved:['date','time']});});

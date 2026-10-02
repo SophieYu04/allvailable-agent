@@ -21,14 +21,14 @@ export async function POST(request:Request,context:{params:Promise<{id:string}>}
  if(String(row.version)!==body.data.version)return jsonError(409,'VERSION_CONFLICT','卡片已更新，請重試',true);
  const respond=(data:typeof row)=>NextResponse.json({importId:data.id,status:data.status,version:String(data.version),extraction:data.extraction,expiresAt:data.expires_at});
  if(body.data.finish){
-  const {data,error}=await supabase.from('calendar_imports').update({extraction:{...current,liveVoice:{...session,closed:true}},version:nextDecimalVersion(row.version)}).eq('id',id).eq('user_id',user.id).eq('version',row.version).select('*').single();
+  const {data,error}=await supabase.from('calendar_imports').update({status:current.events.length?row.status:'rejected',extraction:{...current,liveVoice:{...session,closed:true}},version:nextDecimalVersion(row.version)}).eq('id',id).eq('user_id',user.id).eq('version',row.version).select('*').single();
   return error||!data?jsonError(409,'VERSION_CONFLICT','卡片已更新',true):respond(data);
  }
  if(session.calls>=LIVE_VOICE_CALL_LIMIT||Date.now()-session.startedAt>LIVE_VOICE_WINDOW_MS)return jsonError(429,'LIVE_SESSION_LIMIT','此段錄音已達處理上限，請确认已有卡片',false);
  if(body.data.transcript===current.transcript)return respond(row);
  // Each inference also consumes an independent daily quota, so editable import
  // metadata cannot bypass the provider usage ceiling.
- const {data:quota,error:quotaError}=await supabase.rpc('consume_ai_quota',{p_idempotency_key:crypto.randomUUID(),p_user_limit:Number(process.env.AI_DAILY_USER_LIMIT??3),p_global_limit:Number(process.env.AI_DAILY_GLOBAL_LIMIT??30)});
+ const {data:quota,error:quotaError}=await supabase.rpc('consume_ai_quota',{p_idempotency_key:crypto.randomUUID(),p_user_limit:Number(process.env.AI_DAILY_USER_LIMIT??3),p_global_limit:Number(process.env.AI_DAILY_GLOBAL_LIMIT??120)});
  if(quotaError)return jsonError(503,'QUOTA_UNAVAILABLE','目前無法確認用量',true);
  if(!(quota as {allowed?:boolean}|null)?.allowed)return jsonError(429,'AI_QUOTA_EXCEEDED','今日免費處理次數已用完；請完成錄音，再手動補上其餘時間');
  const lockId=crypto.randomUUID();
@@ -40,7 +40,11 @@ export async function POST(request:Request,context:{params:Promise<{id:string}>}
   const version=nextDecimalVersion(row.version);
   const {data:reservation,error:reserveError}=await supabase.from('calendar_imports').update({extraction:reserved,version}).eq('id',id).eq('user_id',user.id).eq('version',row.version).select('id').single();
   if(reserveError||!reservation)return jsonError(409,'VERSION_CONFLICT','卡片已更新',true);
-  const incoming=await analyzeImport({transcript:body.data.transcript});
+  let speechContext:{timezone:string;dateStart?:string;dateEnd?:string}={timezone:'Asia/Taipei'};
+  if(row.gathering_id){const {data:gathering}=await supabase.from('gatherings').select('date_start,date_end').eq('id',row.gathering_id).single();if(gathering)speechContext={timezone:'Asia/Taipei',dateStart:gathering.date_start,dateEnd:gathering.date_end};}
+  const parsed=await analyzeImport({transcript:body.data.transcript,speechContext});
+  const events=parsed.events.filter(e=>e.intent!=='uncertain'&&(e.allDay===true||e.startTime&&e.endTime));const ids=new Set(events.map(e=>e.id));
+  const incoming={...parsed,events,questions:parsed.questions.filter(q=>q.eventId&&ids.has(q.eventId))};
   const merged=mergeLiveVoice(reserved,incoming,body.data.transcript!);
   const {data,error}=await supabase.from('calendar_imports').update({extraction:merged,status:merged.questions.length?'needs_clarification':'ready',version:nextDecimalVersion(version)}).eq('id',id).eq('user_id',user.id).eq('version',version).select('*').single();
   return error||!data?jsonError(409,'VERSION_CONFLICT','卡片已更新，請重試',true):respond(data);

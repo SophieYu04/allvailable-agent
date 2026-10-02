@@ -1,53 +1,22 @@
-# Current release gate — September 30, 2026
+# Release readiness — October 3, 2026
 
-Live Nebius/NVIDIA web integration and final code checks are complete; see [measured evidence](live-evidence-20260930.md). Cloudflare OAuth has been prepared with only account/user read, Workers Scripts Write and background access; explicit consent is pending. GitHub CLI is authenticated. No paid service has been activated. The older tranche-specific constraints below are historical, not a statement that today’s live tests did not occur.
+The application is public on [GitHub Pages](https://sophieyu04.github.io/allvailable-agent/) with a Cloudflare Free Worker backend and Supabase authentication/storage. The repository is public and MIT licensed. API keys remain in private server configuration. No paid provider usage or credit-card billing was enabled.
 
-# Release readiness and handoff
+Verified technical scope:
 
-## Completed without credits
+- Real Nemotron invitation/availability reasoning, Gemma calendar vision and Whisper speech recognition.
+- Live transcript/card generation, explicit approval, private half-hour timetable and real draft persistence.
+- Spoken busy/free/tentative, bounded daily recurrence, relative dates, overnight duration and unresolved-date clarification.
+- Phone-width method controls; upload cancellation, Keep/Discard/Cancel switching and saved-draft recovery.
+- Unit regressions, TypeScript, scoped lint, Pages/Worker builds and disposable PostgreSQL lifecycle/privacy/quota suites.
 
-- Development-only interactive synthetic review page using production cards and shared validation/calculation.
-- Local persistence, isolated reset, one-shot failure simulation, and a 390px embedded viewport.
-- Recording cancellation/cleanup, card focus changes, all-skipped messaging and full time/timezone display.
-- English root README, preserved broader project guide, rehearsal instructions and evidence-gated 2:45 storyboard.
+See [AI acceptance](ai-acceptance-20261003.md) for tested fixtures and practical limits. Model accuracy is bounded by observed inputs; unknown details still require review.
 
-## Publication candidates
+Remaining submission gates:
 
-Generate an inventory without staging or publishing:
+1. Human phone microphone acceptance and a consenting multi-person run.
+2. Record and upload the working public YouTube demonstration under three minutes.
+3. Verify credit-only service continuation after trial expiry without enabling card billing.
+4. Review the final Devpost fields and submit them through the account owner.
 
-```sh
-node scripts/release-inventory.mjs
-```
-
-The JSON lists the current tracked and nonignored untracked regular files, their sizes, and any unsafe or missing entries. An unsafe entry makes the command fail. Git history must be scanned separately. This is a publication candidate list, not an automatic approval of all unrelated work.
-
-| Group | Purpose |
-| --- | --- |
-| Root README, LICENSE, package/lock files, framework configuration, build/ plugin source | Reproducible licensed application |
-| app/, components/, lib/, public/ | Web source, assets, shared logic and tests |
-| scripts/, tests/, supabase/ | Setup, isolated CLI workflow, verification and migration history |
-| docs/ | Architecture, scope, limits, acceptance records and submission drafts |
-| mobile/ source and platform configuration | Existing companion implementation; distinguish it from verified web behavior |
-
-`.env.local`, independent CLI token state, raw calendar/voice media, outputs, dependency folders and generated native build caches are excluded. `.env.example` contains placeholders only. Preserve existing uncommitted work and do not mass-stage the working tree. Review the inventory again immediately before publication.
-
-## Remaining gates, in order
-
-| Gate | Codex work after it is available | Evidence required |
-| --- | --- | --- |
-| Nebius credit/account access and dedicated local API key | Verify catalog, select models, run live text/image cases and record human accuracy; check audio separately | Real request/model/latency plus reviewed output |
-| Scoped Wrangler authorization | Configure secrets, publish, verify production OAuth and hosted flow | Accessible HTTPS demo and hosted acceptance |
-| GitHub CLI authentication | Review final inventory/history, create and push public licensed repository | Accessible repository and fresh setup instructions |
-| Consenting friends on phones | Facilitate the three-person scenario and resolve device issues | Real shared interval, privacy and microphone results |
-| Verified working demo | Final English narration/cut, actual tool feedback and submission fields | Public YouTube under 3 minutes; no mock claims |
-
-No deployment, public push, model credit consumption, microphone permission or external account change is part of this local work tranche.
-
-## Scan and verification record — 2026-09-28
-
-- Inventory: 422 regular candidate files; no unsafe paths or missing files. Generated reports and screenshots remain under ignored `outputs/hackathon-release/`.
-- `gitleaks dir <temporary-candidate-copy> --redact --no-banner`: no leaks found. Only inventory files were copied; `.env.local` and generated caches were excluded.
-- `gitleaks git . --redact --no-banner`: 12 commits scanned, no leaks found.
-- 103 tests / 21 files, TypeScript, repository lint, production build and diff whitespace checks passed. Local production `/preview`: HTTP 404.
-- The public PNG at `public/images/together.png` is an existing design asset; the inventory/secret scan does not establish rights for every asset or replace final publication review.
-
+The [Devpost draft](devpost-entry.md) and [video storyboard](submission.md) are prepared; pending evidence is labeled. Technical deployment does not establish completion of these human submission steps.

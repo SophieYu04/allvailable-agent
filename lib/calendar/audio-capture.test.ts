@@ -51,3 +51,5 @@ it('observes the existing recording stream and stops metering on stop and cancel
  await capture.start(vi.fn(),vi.fn(),level);expect(level).toHaveBeenCalledWith(.6);capture.stop();expect(cleanup).toHaveBeenCalledTimes(1);
  await capture.start(vi.fn(),vi.fn(),level);capture.cancel();expect(cleanup).toHaveBeenCalledTimes(2);
 });
+
+it('offers complete growing recordings with the container header, not broken standalone chunks',async()=>{vi.useFakeTimers();const f=fake(),progress=vi.fn();const capture=createAudioCapture({acquire:async()=>f.stream,create:f.create});await capture.start(vi.fn(),vi.fn(),undefined,progress);f.media.ondataavailable?.({data:new Blob(['HEADER'])});vi.advanceTimersByTime(5000);f.media.ondataavailable?.({data:new Blob(['FRAME'])});expect(progress).toHaveBeenCalledTimes(1);expect(await progress.mock.calls[0][0].text()).toBe('HEADERFRAME');capture.cancel();vi.advanceTimersByTime(5000);f.media.ondataavailable?.({data:new Blob(['LATE'])});expect(progress).toHaveBeenCalledTimes(1);});

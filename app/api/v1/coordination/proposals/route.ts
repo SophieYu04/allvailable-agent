@@ -29,7 +29,7 @@ export async function POST(request: Request) {
       const replayTranscript = () => supabase.from('coordination_transcripts').select('transcript,expires_at').eq('user_id',user.id).eq('request_key',key).maybeSingle();
       const { data: saved } = await replayTranscript();
       if (saved && new Date(saved.expires_at).getTime() > Date.now()) return NextResponse.json({ transcript: saved.transcript });
-      const { data: quota, error } = await supabase.rpc('consume_ai_quota', { p_idempotency_key: key, p_user_limit: Number(process.env.AI_DAILY_USER_LIMIT ?? 3), p_global_limit: Number(process.env.AI_DAILY_GLOBAL_LIMIT ?? 30) });
+      const { data: quota, error } = await supabase.rpc('consume_ai_quota', { p_idempotency_key: key, p_user_limit: Number(process.env.AI_DAILY_USER_LIMIT ?? 3), p_global_limit: Number(process.env.AI_DAILY_GLOBAL_LIMIT ?? 120) });
       if (error || !quota?.allowed) return jsonError(429, 'AI_QUOTA_EXCEEDED', 'AI 額度已用完，請用文字輸入');
       if (!await acquire()) return jsonError(409, "AI_REQUEST_IN_PROGRESS", "已有 AI 請求處理中，請稍候重試", true);
       const { data: completed } = await replayTranscript();
@@ -61,7 +61,7 @@ export async function POST(request: Request) {
       revision = String(g.revision);
       existing = { name: g.name, dateStart: g.date_start, dateEnd: g.date_end, dailyStart: String(g.daily_start).slice(0,5), dailyEnd: String(g.daily_end).slice(0,5), duration: g.duration_minutes, deadline: g.deadline_at };
     }
-    const { data: quota, error: quotaError } = await supabase.rpc('consume_ai_quota', { p_idempotency_key: input.requestKey, p_user_limit: Number(process.env.AI_DAILY_USER_LIMIT ?? 3), p_global_limit: Number(process.env.AI_DAILY_GLOBAL_LIMIT ?? 30) });
+    const { data: quota, error: quotaError } = await supabase.rpc('consume_ai_quota', { p_idempotency_key: input.requestKey, p_user_limit: Number(process.env.AI_DAILY_USER_LIMIT ?? 3), p_global_limit: Number(process.env.AI_DAILY_GLOBAL_LIMIT ?? 120) });
     if (quotaError || !quota?.allowed) return jsonError(429, 'AI_QUOTA_EXCEEDED', 'AI 額度已用完，請改用手動操作');
     if (!await acquire()) return jsonError(409, "AI_REQUEST_IN_PROGRESS", "已有 AI 請求處理中，請稍候重試", true);
     const { data: finished } = await supabase.from("coordination_proposals").select("*").eq("user_id", user.id).eq("request_key", input.requestKey).maybeSingle();

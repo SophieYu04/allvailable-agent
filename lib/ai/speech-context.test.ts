@@ -1,0 +1,31 @@
+import {expect,it} from 'vitest';
+import {groundSpeech,speechContext} from './speech-context';
+import {normalizeModelExtraction} from './import-normalization';
+import {editDraft} from '@/lib/calendar/draft-events';
+import {buildPreview} from '@/lib/calendar/import-preview';
+import type {Extraction} from '@/lib/calendar/schemas';
+const base:Extraction={sources:[{id:'s',kind:'schedule_voice',reason:null}],questions:[],visibleRanges:[],events:[{id:'e',sourceIds:['s'],label:null,intent:'busy',startDate:'2026-10-07',endDate:'2026-10-07',startTime:'19:00',endTime:'20:00',allDay:false,sourceTimezone:'Asia/Taipei',recurrence:null,unresolved:['intent']}]};
+it('does not downgrade explicit busy or require an invented event name',()=>{
+ const parsed=normalizeModelExtraction(groundSpeech({...base,events:[...base.events,{...base.events[0],id:'duplicate'}]},'2026年10月7日晚上七點到八點 busy'));
+ expect(parsed.events).toHaveLength(1);expect(parsed.events[0].intent).toBe('busy');expect(parsed.questions).toEqual([]);
+ const confirmed=editDraft(parsed,'edit_event','e',{reviewed:true});expect(buildPreview(confirmed,{startDate:'2026-10-07',endDate:'2026-10-07',currentCells:{}}).changes.map(c=>c.after)).toEqual(['red','red']);
+});
+it('drops an unsupported extra card without times when speech has one explicit busy range',()=>{
+ const result=groundSpeech({...base,events:[...base.events,{...base.events[0],id:'ghost',intent:'available',startDate:null,endDate:null,startTime:null,endTime:null}]},'媒體晚上七點到八點 busy');expect(result.events).toHaveLength(1);
+});
+it.each(['每天晚上7點到8點 busy','每日晚上七點至八點沒空','每晚19:00～20:00不能參加'])('applies bounded daily speech to every invitation day: %s',text=>{
+ const parsed=normalizeModelExtraction(groundSpeech({...base,events:[]},text,{timezone:'Asia/Taipei',dateStart:'2026-10-07',dateEnd:'2026-10-09'}));expect(parsed.questions).toEqual([]);
+ const event=parsed.events[0];const confirmed=editDraft(parsed,'edit_event',event.id,{reviewed:true});expect(confirmed.events[0].recurrence?.frequency).toBe('daily');expect(buildPreview(confirmed,{startDate:'2026-10-07',endDate:'2026-10-09',currentCells:{}}).changes).toHaveLength(6);
+});
+it('keeps unbounded daily dates unknown and does not assume today',()=>{const parsed=normalizeModelExtraction(groundSpeech({...base,events:[]},'每天晚上七點到八點 busy'));expect(parsed.events[0].startDate).toBeNull();expect(parsed.questions.some(q=>q.kind==='date')).toBe(true);});
+it('does not turn not busy into busy',()=>{expect(groundSpeech(base,'I am not busy from 7pm to 8pm').events[0].intent).toBe('available');});
+it('supports an explicit reproducible reference date',()=>{expect(speechContext({timezone:'Asia/Taipei',referenceDate:'2026-10-03'}).referenceDate).toBe('2026-10-03');});
+
+it('grounds tomorrow from the trusted local reference date without a name prompt',()=>{const parsed=normalizeModelExtraction(groundSpeech({...base,events:[{...base.events[0],startDate:null,endDate:null,unresolved:['date','title']}]},'明天晚上七點到八點没空',{timezone:'Asia/Taipei',referenceDate:'2026-10-03'}));expect(parsed.events[0]).toMatchObject({startDate:'2026-10-04',endDate:'2026-10-04',intent:'busy'});expect(parsed.questions).toEqual([]);});
+
+it('never expands an ambiguous word to all invitation days or invents an all-day event',()=>{const parsed=normalizeModelExtraction(groundSpeech({...base,events:[...base.events,{...base.events[0],id:'extra',startDate:'2026-10-08',endDate:'2026-10-08'},{...base.events[0],id:'all-day',allDay:true,startTime:null,endTime:null}]},'媒體晚上7點到8點 busy',{timezone:'Asia/Taipei',dateStart:'2026-10-07',dateEnd:'2026-10-09'}));expect(parsed.events).toHaveLength(1);expect(parsed.events[0]).toMatchObject({startDate:null,endDate:null,startTime:'19:00',endTime:'20:00'});expect(parsed.questions.map(q=>q.kind)).toEqual(['date']);});
+
+it('does not infer available from a truncated phrase that contains only dates and times',()=>{expect(groundSpeech({...base,events:[{...base.events[0],intent:'available'}]},'2026年10月7日晚上七點到八點',{timezone:'Asia/Taipei'}).events[0].intent).toBe('uncertain');});
+it('never converts hallucinated complementary free periods into extra busy cards',()=>{const b=base.events[0];const r=groundSpeech({...base,events:[b,{...b,id:'before',intent:'available',startTime:'00:00',endTime:'19:00'},{...b,id:'after',intent:'available',startTime:'20:00',endTime:'23:59'}]},'2026年10月7日,台北时间,晚上7点到8点我没空。',{timezone:'Asia/Taipei',dateStart:'2026-10-07',dateEnd:'2026-10-07'});expect(r.events).toHaveLength(1);expect(r.events[0].startTime).toBe('19:00');expect(r.events[0].intent).toBe('busy');});
+it('retains an explicitly spoken busy interval even when the model returns no events',()=>{const r=normalizeModelExtraction(groundSpeech({...base,events:[]},'媒體晚上7點到8點 busy',{timezone:'Asia/Taipei',dateStart:'2026-10-07',dateEnd:'2026-10-09'}));expect(r.events).toHaveLength(1);expect(r.events[0].startTime).toBe('19:00');expect(r.events[0].startDate).toBeNull();expect(r.questions.map(q=>q.kind)).toEqual(['date']);});
+it('preserves overnight duration when reconstructing a missing single interval',()=>{const r=groundSpeech({...base,events:[]},'2026年10月7日晚上11點到隔天凌晨1點busy',{timezone:'Asia/Taipei'});expect(r.events[0].startDate).toBe('2026-10-07');expect(r.events[0].endDate).toBe('2026-10-08');expect(r.events[0].endTime).toBe('01:00');});

@@ -114,7 +114,7 @@ function expandEvent(event: ExtractedEvent, range: { startDate: string; endDate:
     const date = new Date(cursor); const origin = new Date(start); const diffDays = Math.round((cursor - start) / DAY_MS); const monthDelta = (date.getUTCFullYear() - origin.getUTCFullYear()) * 12 + date.getUTCMonth() - origin.getUTCMonth(); const weekNumber = Math.floor(diffDays / 7); const matches = event.recurrence.frequency === "daily" ? diffDays % event.recurrence.interval === 0 : event.recurrence.frequency === "weekly" ? weekNumber % event.recurrence.interval === 0 && (event.recurrence.weekdays.length ? event.recurrence.weekdays.includes(date.getUTCDay()) : date.getUTCDay() === origin.getUTCDay()) : date.getUTCDate() === origin.getUTCDate() && monthDelta % event.recurrence.interval === 0;
     if (!matches) continue;
     const value = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
-    output.push({ ...event, id: `${event.id}-${value}`, startDate: value, endDate: value, recurrence: null });
+    output.push({ ...event, id: `${event.id}-${value}`, startDate: value, endDate: new Date(cursor + parseDate(event.endDate) - start).toISOString().slice(0,10), recurrence: null });
   }
   return output.length ? output : [event];
 }

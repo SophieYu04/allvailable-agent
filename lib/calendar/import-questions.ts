@@ -11,7 +11,7 @@ export function ensureImportQuestions(extraction: Extraction): Extraction {
 
   for (const event of extraction.events) {
     if (!['busy', 'available', 'tentative', 'uncertain'].includes(event.intent)) continue;
-    if ((event.intent !== 'available' && !event.label?.trim()) || event.unresolved.includes('title')) add({ id: `${event.id}-title`, eventId: event.id, kind: 'title', prompt: '請確認這一項的名稱；若只是期限或提醒，可以略過。' });
+    if (!extraction.sources.some(source=>event.sourceIds.includes(source.id)&&source.kind==='schedule_voice') && ((event.intent !== 'available' && !event.label?.trim()) || event.unresolved.includes('title'))) add({ id: `${event.id}-title`, eventId: event.id, kind: 'title', prompt: '請確認這一項的名稱；若只是期限或提醒，可以略過。' });
     if (!event.startDate || !event.endDate || event.unresolved.includes('date')) add({ id: `${event.id}-date`, eventId: event.id, kind: 'date', prompt: '這個行程是哪一天？請提供完整年月日。' });
     if (event.allDay === null || event.unresolved.includes('all_day')) add({ id: `${event.id}-all-day`, eventId: event.id, kind: 'all_day', prompt: '這是全天事件，還是要補上確切起訖時間？', options: ['真的全天不能', '指定起訖', '只是提醒不占時間', '暫時未知'] });
     else if (((!event.startTime || !event.endTime) && event.allDay === false) || event.unresolved.includes('time')) {

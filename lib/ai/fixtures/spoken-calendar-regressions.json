@@ -1,0 +1,483 @@
+[
+  {
+    "name": "中文 busy",
+    "text": "2026年10月7日，台北時間晚上7點到8點 busy。",
+    "extraction": {
+      "sources": [
+        {
+          "id": "s",
+          "kind": "schedule_voice",
+          "reason": null
+        }
+      ],
+      "events": [
+        {
+          "id": "e-0",
+          "label": null,
+          "allDay": false,
+          "intent": "busy",
+          "endDate": "2026-10-07",
+          "endTime": "20:00",
+          "sourceIds": [
+            "s"
+          ],
+          "startDate": "2026-10-07",
+          "startTime": "19:00",
+          "recurrence": null,
+          "unresolved": [],
+          "userConfirmed": false,
+          "sourceTimezone": "Asia/Taipei"
+        }
+      ],
+      "questions": [],
+      "visibleRanges": []
+    }
+  },
+  {
+    "name": "中文口語",
+    "text": "二零二六年十月七日，台灣時間晚上七點到八點我沒空。",
+    "extraction": {
+      "sources": [
+        {
+          "id": "s",
+          "kind": "schedule_voice",
+          "reason": null
+        }
+      ],
+      "events": [
+        {
+          "id": "e-0",
+          "label": null,
+          "allDay": false,
+          "intent": "busy",
+          "endDate": "2026-10-07",
+          "endTime": "20:00",
+          "sourceIds": [
+            "s"
+          ],
+          "startDate": "2026-10-07",
+          "startTime": "19:00",
+          "recurrence": null,
+          "unresolved": [],
+          "userConfirmed": false,
+          "sourceTimezone": "Asia/Taipei"
+        }
+      ],
+      "questions": [],
+      "visibleRanges": []
+    }
+  },
+  {
+    "name": "24小時制",
+    "text": "2026-10-07，Asia/Taipei，19:00到20:00不能參加。",
+    "extraction": {
+      "sources": [
+        {
+          "id": "s",
+          "kind": "schedule_voice",
+          "reason": null
+        }
+      ],
+      "events": [
+        {
+          "id": "e-0",
+          "label": null,
+          "allDay": false,
+          "intent": "busy",
+          "endDate": "2026-10-07",
+          "endTime": "20:00",
+          "sourceIds": [
+            "s"
+          ],
+          "startDate": "2026-10-07",
+          "startTime": "19:00",
+          "recurrence": null,
+          "unresolved": [],
+          "userConfirmed": false,
+          "sourceTimezone": "Asia/Taipei"
+        },
+        {
+          "id": "e-1",
+          "label": null,
+          "allDay": true,
+          "intent": "busy",
+          "endDate": "2026-10-08",
+          "endTime": null,
+          "sourceIds": [
+            "s"
+          ],
+          "startDate": "2026-10-08",
+          "startTime": null,
+          "recurrence": null,
+          "unresolved": [],
+          "userConfirmed": false,
+          "sourceTimezone": "Asia/Taipei"
+        },
+        {
+          "id": "e-2",
+          "label": null,
+          "allDay": true,
+          "intent": "busy",
+          "endDate": "2026-10-09",
+          "endTime": null,
+          "sourceIds": [
+            "s"
+          ],
+          "startDate": "2026-10-09",
+          "startTime": null,
+          "recurrence": null,
+          "unresolved": [],
+          "userConfirmed": false,
+          "sourceTimezone": "Asia/Taipei"
+        }
+      ],
+      "questions": [],
+      "visibleRanges": []
+    }
+  },
+  {
+    "name": "English",
+    "text": "October 7, 2026. Taipei time. I am busy from 7 pm to 8 pm.",
+    "extraction": {
+      "sources": [
+        {
+          "id": "s",
+          "kind": "schedule_voice",
+          "reason": null
+        }
+      ],
+      "events": [
+        {
+          "id": "e-0",
+          "label": null,
+          "allDay": false,
+          "intent": "busy",
+          "endDate": "2026-10-07",
+          "endTime": "20:00",
+          "sourceIds": [
+            "s"
+          ],
+          "startDate": "2026-10-07",
+          "startTime": "19:00",
+          "recurrence": null,
+          "unresolved": [],
+          "userConfirmed": false,
+          "sourceTimezone": "Asia/Taipei"
+        }
+      ],
+      "questions": [],
+      "visibleRanges": []
+    }
+  },
+  {
+    "name": "跨日",
+    "text": "2026年10月7日，台北時間，晚上11點到隔天凌晨1點我有事。",
+    "extraction": {
+      "sources": [
+        {
+          "id": "s",
+          "kind": "schedule_voice",
+          "reason": null
+        }
+      ],
+      "events": [
+        {
+          "id": "e-0",
+          "label": "有事",
+          "allDay": false,
+          "intent": "busy",
+          "endDate": "2026-10-08",
+          "endTime": "01:00",
+          "sourceIds": [
+            "s"
+          ],
+          "startDate": "2026-10-07",
+          "startTime": "23:00",
+          "recurrence": null,
+          "unresolved": [],
+          "userConfirmed": false,
+          "sourceTimezone": "Asia/Taipei"
+        },
+        {
+          "id": "e-1",
+          "label": null,
+          "allDay": true,
+          "intent": "busy",
+          "endDate": "2026-10-07",
+          "endTime": null,
+          "sourceIds": [
+            "s"
+          ],
+          "startDate": "2026-10-07",
+          "startTime": null,
+          "recurrence": null,
+          "unresolved": [],
+          "userConfirmed": false,
+          "sourceTimezone": "Asia/Taipei"
+        }
+      ],
+      "questions": [],
+      "visibleRanges": []
+    }
+  },
+  {
+    "name": "每天",
+    "text": "每天晚上7點到8點 busy，台北時間。",
+    "extraction": {
+      "sources": [
+        {
+          "id": "s",
+          "kind": "schedule_voice",
+          "reason": null
+        }
+      ],
+      "events": [
+        {
+          "id": "e-0",
+          "label": null,
+          "allDay": false,
+          "intent": "busy",
+          "endDate": "2026-10-07",
+          "endTime": "20:00",
+          "sourceIds": [
+            "s"
+          ],
+          "startDate": "2026-10-07",
+          "startTime": "19:00",
+          "recurrence": {
+            "until": "2026-10-09",
+            "interval": 1,
+            "weekdays": [],
+            "frequency": "daily"
+          },
+          "unresolved": [],
+          "userConfirmed": false,
+          "sourceTimezone": "Asia/Taipei"
+        }
+      ],
+      "questions": [],
+      "visibleRanges": []
+    }
+  },
+  {
+    "name": "媒體原句",
+    "text": "媒體晚上7點到8點 busy",
+    "extraction": {
+      "sources": [
+        {
+          "id": "s",
+          "kind": "schedule_voice",
+          "reason": null
+        }
+      ],
+      "events": [
+        {
+          "id": "e-0",
+          "label": "媒體晚上7點到8點 busy",
+          "allDay": false,
+          "intent": "busy",
+          "endDate": "2026-10-07",
+          "endTime": "20:00",
+          "sourceIds": [
+            "s"
+          ],
+          "startDate": "2026-10-07",
+          "startTime": "19:00",
+          "recurrence": null,
+          "unresolved": [],
+          "userConfirmed": false,
+          "sourceTimezone": "Asia/Taipei"
+        },
+        {
+          "id": "e-1",
+          "label": "媒體晚上7點到8點 busy",
+          "allDay": false,
+          "intent": "busy",
+          "endDate": "2026-10-08",
+          "endTime": "20:00",
+          "sourceIds": [
+            "s"
+          ],
+          "startDate": "2026-10-08",
+          "startTime": "19:00",
+          "recurrence": null,
+          "unresolved": [],
+          "userConfirmed": false,
+          "sourceTimezone": "Asia/Taipei"
+        },
+        {
+          "id": "e-2",
+          "label": "媒體晚上7點到8點 busy",
+          "allDay": false,
+          "intent": "busy",
+          "endDate": "2026-10-09",
+          "endTime": "20:00",
+          "sourceIds": [
+            "s"
+          ],
+          "startDate": "2026-10-09",
+          "startTime": "19:00",
+          "recurrence": null,
+          "unresolved": [],
+          "userConfirmed": false,
+          "sourceTimezone": "Asia/Taipei"
+        }
+      ],
+      "questions": [],
+      "visibleRanges": []
+    }
+  },
+  {
+    "name": "明天",
+    "text": "明天晚上七點到八點沒空，台北時間。",
+    "extraction": {
+      "sources": [
+        {
+          "id": "s",
+          "kind": "schedule_voice",
+          "reason": null
+        }
+      ],
+      "events": [
+        {
+          "id": "e-0",
+          "label": null,
+          "allDay": false,
+          "intent": "busy",
+          "endDate": "2026-10-04",
+          "endTime": "20:00",
+          "sourceIds": [
+            "s"
+          ],
+          "startDate": "2026-10-04",
+          "startTime": "19:00",
+          "recurrence": null,
+          "unresolved": [],
+          "userConfirmed": false,
+          "sourceTimezone": "Asia/Taipei"
+        }
+      ],
+      "questions": [],
+      "visibleRanges": []
+    }
+  },
+  {
+    "name": "Available + Tentative",
+    "text": "2026年10月7日台北時間，晚上六點到七點有空，八點到九點可能有事。",
+    "extraction": {
+      "sources": [
+        {
+          "id": "s",
+          "kind": "schedule_voice",
+          "reason": null
+        }
+      ],
+      "events": [
+        {
+          "id": "e-0",
+          "label": null,
+          "allDay": false,
+          "intent": "available",
+          "endDate": "2026-10-07",
+          "endTime": "19:00",
+          "sourceIds": [
+            "s"
+          ],
+          "startDate": "2026-10-07",
+          "startTime": "18:00",
+          "recurrence": null,
+          "unresolved": [],
+          "userConfirmed": false,
+          "sourceTimezone": "Asia/Taipei"
+        },
+        {
+          "id": "e-1",
+          "label": null,
+          "allDay": false,
+          "intent": "tentative",
+          "endDate": "2026-10-07",
+          "endTime": "21:00",
+          "sourceIds": [
+            "s"
+          ],
+          "startDate": "2026-10-07",
+          "startTime": "20:00",
+          "recurrence": null,
+          "unresolved": [],
+          "userConfirmed": false,
+          "sourceTimezone": "Asia/Taipei"
+        }
+      ],
+      "questions": [],
+      "visibleRanges": []
+    }
+  },
+  {
+    "name": "中文錄音",
+    "text": "2026年10月7日,台北时间,晚上7点到8点我没空。",
+    "extraction": {
+      "sources": [
+        {
+          "id": "s",
+          "kind": "schedule_voice",
+          "reason": null
+        }
+      ],
+      "events": [
+        {
+          "id": "e-0",
+          "label": null,
+          "allDay": false,
+          "intent": "busy",
+          "endDate": "2026-10-07",
+          "endTime": "20:00",
+          "sourceIds": [
+            "s"
+          ],
+          "startDate": "2026-10-07",
+          "startTime": "19:00",
+          "recurrence": null,
+          "unresolved": [],
+          "userConfirmed": false,
+          "sourceTimezone": "Asia/Taipei"
+        }
+      ],
+      "questions": [],
+      "visibleRanges": []
+    }
+  },
+  {
+    "name": "英文錄音",
+    "text": "On October 7, 2026, Taipei Time, I am busy from 7 to 8 p.m.",
+    "extraction": {
+      "sources": [
+        {
+          "id": "s",
+          "kind": "schedule_voice",
+          "reason": null
+        }
+      ],
+      "events": [
+        {
+          "id": "e-0",
+          "label": null,
+          "allDay": false,
+          "intent": "busy",
+          "endDate": "2026-10-07",
+          "endTime": "20:00",
+          "sourceIds": [
+            "s"
+          ],
+          "startDate": "2026-10-07",
+          "startTime": "19:00",
+          "recurrence": null,
+          "unresolved": [],
+          "userConfirmed": false,
+          "sourceTimezone": "Asia/Taipei"
+        }
+      ],
+      "questions": [],
+      "visibleRanges": []
+    }
+  }
+]

@@ -1,4 +1,4 @@
-# Submission draft — requires live demo evidence
+# Submission draft — video and human phone acceptance pending
 
 ## Project description
 
@@ -8,7 +8,7 @@ Organizing a group should not mean comparing screenshots in a chat thread. Allva
 
 The agent asks for missing information instead of inventing dates. A deterministic scheduling engine evaluates half-hour intervals; AI extraction cannot infer free time from blank space, and unknown slots and missing replies remain explicit. Event names and original calendar inputs stay private to their owner.
 
-**Model evidence:** live Nemotron invitation parsing and the three-row Chinese screenshot fixture are verified in [live evidence](live-evidence-20260930.md). The web demo uses typed corrections; do not claim browser speech. Public deployment, physical-device acceptance and the final recording remain pending.
+**Model evidence:** Public deployment, real Nemotron/vision/Whisper inference and synthetic browser microphone-to-timetable acceptance are verified in [October 3 acceptance](ai-acceptance-20261003.md). Human phone microphone testing, consenting friends and the public YouTube recording remain pending.
 
 Track: Best Apps and Agents.
 

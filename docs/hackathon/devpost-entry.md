@@ -24,19 +24,21 @@ Allvailable grew from an existing event-planning project. During the hackathon, 
 
 ## How Nebius and NVIDIA are used
 
-The server calls Nebius Token Factory at runtime. **NVIDIA open model:** `nvidia/nemotron-3-super-120b-a12b`. It prepares invitation drafts from natural language and interprets screenshot text. Screenshot transcription uses `openbmb/MiniCPM-V-4_5`, followed by Nemotron and deterministic grounding of literal date headers and titles. On iOS, the system Speech framework turns a spoken correction into text before the server-side model parses it; the Web flow uses typed corrections unless a separately tested transcription provider is enabled. We validate structured output, keep missing facts unresolved, and require human confirmation before any availability write. The deterministic TypeScript and SQL scheduler computes candidate overlaps from submitted half-hour cells. Only explicitly confirmed intervals are written; unmarked blanks remain unknown.
+The server calls Nebius Token Factory at runtime. **NVIDIA open model:** `nvidia/nemotron-3-super-120b-a12b`. It prepares invitation drafts from natural language and interprets screenshot text. Screenshot vision uses `google/gemma-3-27b-it`, followed by Nemotron and deterministic grounding of date headers, calendar block geometry and time-axis ticks. Web voice uses browser speech recognition when available; Cloudflare Workers AI `@cf/openai/whisper-large-v3-turbo` provides live microphone transcription otherwise. Nemotron turns completed phrases into review cards while recording. Dates are grounded in the invitation and Taipei reference date; missing dates stay unresolved. We validate structured output, keep missing facts unresolved, and require human confirmation before any availability write. The deterministic TypeScript and SQL scheduler computes candidate overlaps from submitted half-hour cells. Only explicitly confirmed intervals are written; unmarked blanks remain unknown.
 
-**Measured evidence (September 30, 2026):** Token Factory at `https://api.tokenfactory.nebius.com/v1`; Nemotron invitation parsing completed in 1,841 ms. The final three-row Chinese screenshot fixture took 2,413 ms for vision transcription and 2,451 ms for Nemotron interpretation. All three titles and the explicit date were retained; unprovided times and timezone stayed unresolved. See `docs/hackathon/live-evidence-20260930.md`.
+**Latest acceptance (October 3, 2026):** 13/13 hosted inference cases passed, including Chinese/English, overnight intervals, daily recurrence, relative dates, two synthesized recordings and two calendar-grid reads. Browser MediaRecorder testing additionally verified live transcription, live review cards, explicit approval and saved timetable cells with synthetic audio. This does not replace human phone-microphone acceptance. See [AI acceptance](ai-acceptance-20261003.md).
+
+**Earlier measured evidence (September 30, 2026):** Token Factory at `https://api.tokenfactory.nebius.com/v1`; Nemotron invitation parsing completed in 1,841 ms. The final three-row Chinese screenshot fixture took 2,413 ms for vision transcription and 2,451 ms for Nemotron interpretation. All three titles and the explicit date were retained; unprovided times and timezone stayed unresolved. See `docs/hackathon/live-evidence-20260930.md`.
 
 **Token Factory workflow evidence:** We tested Nano and Super through the same hosted endpoint without provisioning a GPU. Nano produced a wrong duration and an incompatible date format in early trials, so the app now uses Super plus deterministic validation. Small vision-model scheduling output was inconsistent; splitting transcription from Nemotron interpretation fixed the tested three-row case. Non-thinking Nemotron requests required explicit chat-template controls to obtain visible content. The feedback log includes these reproducible integration findings.
 
 ## Links
 
-- Working demo: **Pending public deployment and hosted acceptance**
+- Working demo: https://sophieyu04.github.io/allvailable-agent/
 - Public source repository: https://github.com/SophieYu04/allvailable-agent
 - Public YouTube demo (under 3 minutes): **Pending recording and upload**
 - Open-source license: MIT (`LICENSE` at repository root)
-- Nebius/NVIDIA tool feedback: **Complete after real use; add reproducible observations and measurements**
+- Nebius/NVIDIA tool feedback: [Measured integration feedback](ai-acceptance-20261003.md)
 
 ## Pre-submit evidence gate
 

@@ -21,7 +21,7 @@ Allvailable is a scheduling agent for groups. Describe a plan, review your avail
 | Auth & data | Supabase Auth and Postgres with row-level security |
 | AI | NVIDIA Nemotron Super on Nebius Token Factory; Gemma 3 for visual calendar understanding |
 
-The models interpret plans, screenshots, and voice availability. Supported browsers show live speech captions and send finalized phrases to NVIDIA Nemotron for review cards during recording. Cloudflare Whisper provides the confirmed-recording fallback. Deterministic code computes the overlap; users approve changes before submission. Model credentials stay on the server.
+The models interpret plans, screenshots, and voice availability. Supported browsers show live speech captions and send finalized phrases to NVIDIA Nemotron for review cards during recording. Cloudflare Whisper supplies live transcription from microphone WAV prefixes when browser captions are unavailable, and verifies the completed recording. Deterministic code computes the overlap; users approve changes before submission. Model credentials stay on the server.
 
 ## Run locally
 
@@ -43,6 +43,6 @@ npm run build:pages
 
 ## Hackathon
 
-Built for **Nebius × NVIDIA — Best Apps and Agents**. Real text, screenshot, and voice inference have been verified. See [calendar grid recognition](docs/hackathon/calendar-grid-evidence-20261002.md), [live voice cards](docs/hackathon/live-voice-evidence-20261002.md), [text and vision evidence](docs/hackathon/live-evidence-20260930.md) and [voice verification](docs/hackathon/voice-evidence-20261002.md). Final submission and video are still in preparation.
+Built for **Nebius × NVIDIA — Best Apps and Agents**. Real text, screenshot, and voice inference have been verified. See [October 3 AI acceptance](docs/hackathon/ai-acceptance-20261003.md), [calendar grid recognition](docs/hackathon/calendar-grid-evidence-20261002.md), [live voice cards](docs/hackathon/live-voice-evidence-20261002.md), [text and vision evidence](docs/hackathon/live-evidence-20260930.md) and [voice verification](docs/hackathon/voice-evidence-20261002.md). Final submission and video are still in preparation.
 
 [MIT License](LICENSE)
