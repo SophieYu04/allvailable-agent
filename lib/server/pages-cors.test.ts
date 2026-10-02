@@ -9,6 +9,16 @@ describe('Pages API isolation', () => {
     expect(result.headers.get('Access-Control-Allow-Origin')).toBe(origin);
     expect(result.headers.has('Access-Control-Allow-Credentials')).toBe(false);
   });
+  it('allows every header used by photo and voice uploads, including retry deduplication', () => {
+    const requested = ['authorization', 'idempotency-key', 'content-type'];
+    const result = pagesCors(new Request(url, { method: 'OPTIONS', headers: {
+      Origin: origin, 'Access-Control-Request-Method': 'POST',
+      'Access-Control-Request-Headers': requested.join(','),
+    } }), origin);
+    const allowed = result.headers.get('Access-Control-Allow-Headers')!.toLowerCase().split(',').map(value => value.trim());
+    expect(result.status).toBe(204);
+    expect(requested.every(header => allowed.includes(header))).toBe(true);
+  });
   it('rejects untrusted origins even with a token', () => {
     const result = pagesCors(new Request(url, { headers: { Origin: 'https://evil.example', Authorization: 'Bearer example' } }), origin);
     expect(result.status).toBe(403);

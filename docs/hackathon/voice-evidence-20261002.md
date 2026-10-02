@@ -30,3 +30,7 @@ ALLVAILABLE_TEST_ORIGIN=https://allvailable-hackathon.sakurajade4869.workers.dev
 ```
 
 This script uses the dedicated project's server credentials locally, creates one disposable test account, validates the exact fixture above, and cleans it up. It performs real inference. It does not test a physical phone's microphone, Safari permissions, or real-friend usability.
+
+## Browser upload correction (same day)
+
+The initial hosted inference tests did not exercise browser CORS. Pages uploads include `Idempotency-Key`, but the API initially allowed only Authorization and Content-Type, so browsers blocked both photo and voice uploads before inference. The missing header is now explicitly allowed for the exact Pages origin. A real-browser, two-origin local transport test reproduced both blocked uploads with the old header list and successful delivery with the fix. Production preflights for import and voice clarification now pass; untrusted origins still return 403. This fixes transport and does not remove per-item review or automatically submit availability.

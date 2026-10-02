@@ -6,7 +6,7 @@ export function pagesCors(request: Request, configuredOrigin: string | undefined
   const headers = new Headers({
     'Access-Control-Allow-Origin': origin,
     'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Authorization, Content-Type',
+    'Access-Control-Allow-Headers': 'Authorization, Content-Type, Idempotency-Key',
     'Access-Control-Max-Age': '600',
     'Vary': 'Origin',
   });
