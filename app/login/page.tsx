@@ -19,8 +19,10 @@ export default function LoginPage() {
     setLoading(true);
     const next = new URLSearchParams(routeSearch()).get("next") ?? "/";
     const safeNext = safeAppPath(next);
-    const { error } = await client.auth.signInWithOAuth({ provider: "google", options: { redirectTo: loginRedirect(safeNext) } });
-    if (error) { setMessage(error.message); setLoading(false); }
+    try {
+      const { error } = await client.auth.signInWithOAuth({ provider: "google", options: { redirectTo: loginRedirect(safeNext), queryParams: { prompt: 'select_account' } } });
+      if (error) throw error;
+    } catch (error) { setMessage(error instanceof Error ? error.message : t('無法開啟 Google 登入，請重試。', 'Unable to open Google sign-in. Please try again.')); setLoading(false); }
   }
 
   return <main className="login-page dining-login"><LanguageSwitch/><Link className="login-back" href="/"><ArrowLeft size={16} />{t("回到Allvailable", "Back to Allvailable")}</Link><section className="login-card"><div className="login-symbol"><Sparkles size={22} /></div><p className="eyebrow">WELCOME TO Allvailable</p><h1>{t("先登入，", "Sign in,")}<br /><em>{t("再一起約。", "find time together.")}</em></h1><p className="login-copy">{t("不需開啟行事曆權限。", "No calendar access needed.")}</p><button className="google-button" onClick={signIn} disabled={loading}><span className="google-g">G</span>{loading ? t("正在前往 Google…", "Opening Google…") : t("使用 Google 登入", "Sign in with Google")}</button>{message && <div className="login-message"><CheckCircle2 size={17} />{message}</div>}<div className="login-safe"><LockKeyhole size={16} /><span>{t("私人行程不公開。", "Your calendar stays private.")}</span></div></section><p className="login-footer"><Link href="/privacy">{t("隱私說明", "Privacy")}</Link> · <Link href="/terms">{t("服務條款", "Terms")}</Link></p></main>;

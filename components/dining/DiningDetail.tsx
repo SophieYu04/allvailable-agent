@@ -44,13 +44,14 @@ export default function DiningDetail({ token, gatheringId }: { token?: string; g
   const [blankPreview, setBlankPreview] = useState<string[] | null>(null);
   const [gathering, setGathering] = useState<Gathering | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [accessUnavailable, setAccessUnavailable] = useState(false);
   const [joined, setJoined] = useState(false);
   const [cells, setCells] = useState<Cells>({});
   const [version, setVersion] = useState("1");
   const [message, setMessage] = useState("");
   const [working, setWorking] = useState(false);
   const [conflict, setConflict] = useState(false);
-  const [cancelOpen, setCancelOpen] = useState(false);
   const [shared, setShared] = useState<Array<{key:string;before:SlotStatus;after:SlotStatus}> | null>(null);
   const [sharedSelection, setSharedSelection] = useState<string[]>([]);
   const [now, setNow] = useState(() => Date.now());
@@ -61,15 +62,23 @@ export default function DiningDetail({ token, gatheringId }: { token?: string; g
 
   const load = useCallback(async (discardLocal = false) => {
     const epoch = ++loadEpoch.current;
-    const summary = await api(gatheringId ? `/api/v1/coordination/${encodeURIComponent(gatheringId)}` : `/api/v1/join/${encodeURIComponent(token ?? "")}`);
-    if (epoch !== loadEpoch.current) return;
-    setGathering(summary.gathering);
     const client = getSupabaseBrowserClient();
     const auth = client ? await client.auth.getUser() : null;
     if (epoch !== loadEpoch.current) return;
     const id = auth?.data.user?.id ?? null;
     setUserId(id);
-    if (!id) { setJoined(false); setCells({}); return; }
+    setAuthChecked(true);
+    setAccessUnavailable(false);
+    if (!id) { setGathering(null); setJoined(false); setCells({}); setMessage(t('請先登入以開啟邀請。', 'Sign in to open this invitation.')); return; }
+    const summary = await api(gatheringId ? `/api/v1/coordination/${encodeURIComponent(gatheringId)}` : `/api/v1/join/${encodeURIComponent(token ?? "")}`).catch(error => {
+      if (epoch === loadEpoch.current && error instanceof DiningError && [403,404].includes(error.status)) {
+        setGathering(null); setJoined(false); setCells({}); setAccessUnavailable(true);
+        throw new Error(t('你已登入，但此帳戶無法開啟這筆邀請。請向主揪索取分享連結或六位數邀請碼。', 'You are signed in, but this invitation is unavailable to your account. Ask the host for a share link or six-digit code.'));
+      }
+      throw error;
+    });
+    if (epoch !== loadEpoch.current) return;
+    setGathering(summary.gathering);
     const response = await apiFetch(`/api/v1/coordination/${summary.gathering.id}`);
     if (epoch !== loadEpoch.current) return;
     if (response.status === 404 || response.status === 403) { setJoined(false); return; }
@@ -149,7 +158,8 @@ export default function DiningDetail({ token, gatheringId }: { token?: string; g
     <h1>{gathering?.name ?? (message ? t("無法載入邀約", "Invitation unavailable") : t("邀請載入中", "Loading invitation…"))}</h1>
     {message && <div className="dining-message" role="status">{message}{!gathering && <button onClick={() => void load().catch(e => setMessage(e.message))}>{t("重新載入", "Retry")}</button>}</div>}
     {gathering && <p>{gathering.host_name && <>{t("主揪","Host")}: {gathering.host_name} · </>}{gathering.date_start} ～ {gathering.date_end}{t("· 回覆截止", "· Reply by")}{stamp(gathering.deadline_at)}{t("（台灣時間）", " (Taipei time)")}</p>}
-    {!userId && <Link className="button primary" href={`/login?next=${encodeURIComponent(gatheringId ? `/gatherings/${gatheringId}` : `/join/${token}`)}`}>{t("使用 Google 登入並回覆", "Sign in with Google to reply")}</Link>}
+    {authChecked && !userId && <Link className="button primary" href={`/login?next=${encodeURIComponent(gatheringId ? `/gatherings/${gatheringId}` : `/join/${token}`)}`}>{t("使用 Google 登入並回覆", "Sign in with Google to reply")}</Link>}
+    {accessUnavailable && userId && <div className="dining-actions"><Link className="button primary" href="/">{t('回到我的聚會', 'My gatherings')}</Link><Link href="/join">{t('輸入邀請碼', 'Enter invitation code')}</Link><Link href={`/login?next=${encodeURIComponent(gatheringId ? `/gatherings/${gatheringId}` : `/join/${token}`)}`}>{t('切換 Google 帳戶', 'Use another Google account')}</Link></div>}
     {token && userId && !joined && <button className="button primary" disabled={working || locked} onClick={() => act(async () => { await api(`/api/v1/join/${encodeURIComponent(token ?? "")}`, "POST"); await load(); })}>{locked ? t("邀約已截止", "Invitation closed") : t("確認加入邀約", "Join this invitation")}</button>}
     {gathering && (joined || gathering.host_id===userId) && <>
       <GatheringManager gathering={gathering} reload={()=>load()} host={gathering.host_id===userId} expired={new Date(gathering.deadline_at).getTime()<=now} disabled={working||importActive} onLeave={()=>router.push("/")}/>
@@ -164,9 +174,8 @@ export default function DiningDetail({ token, gatheringId }: { token?: string; g
         else { await navigator.clipboard.writeText(url); setMessage(t("邀請連結已複製", "Invitation link copied.")); }
       })}>{t("分享飯局", "Share invitation")}</button>
       {gathering.host_id === userId && !['draft','finalized','cancelled'].includes(gathering.status) && <button disabled={working || importActive} onClick={() => act(async () => { await api(`/api/v1/coordination/${gathering.id}/recalculate`, 'POST'); await load(); setMessage(t("已依最新提交計算推薦", "Recommendations updated from submitted availability.")); })}>{t("計算推薦時間", "Find shared times")}</button>}
-      {gathering.host_id === userId && !['draft','finalized','cancelled'].includes(gathering.status) && <button disabled={working || importActive} onClick={() => setCancelOpen(true)}>{t("取消飯局", "Cancel invitation")}</button>}
+      {gathering.host_id === userId && !['draft','finalized','cancelled'].includes(gathering.status) && <button disabled={working || importActive} onClick={() => { if(confirm(t("確定取消這場飯局？取消後無法繼續填寫或拍板。", "Cancel this invitation? Replies and finalization will be closed."))) void act(async()=>{await api(`/api/v1/coordination/${gathering.id}/cancel`, 'POST');await load();setMessage(t("飯局已取消", "Invitation cancelled."));}); }}>{t("取消飯局", "Cancel invitation")}</button>}
       <button disabled={working || importActive} onClick={() => { if (confirm(t("重新載入會取代本機尚未儲存的填寫，確定？", "Reload and replace unsaved local changes?"))) void act(() => load(true)); }}>{t("重新載入", "Reload")}</button></div>
-      {cancelOpen && <div className="confirm-overlay"><section role="alertdialog" aria-modal="true" aria-labelledby="cancel-heading" className="confirm-card"><h2 id="cancel-heading">{t("取消這場邀請？", "Cancel this invitation?")}</h2><p>{t("取消後，參與者將無法繼續回覆或拍板；邀請會保留在歷史紀錄。", "Replies and finalization will close. The invitation will remain in History.")}</p><div><button disabled={working} onClick={()=>setCancelOpen(false)}>{t("保留邀請", "Keep invitation")}</button><button disabled={working} className="confirm-danger" onClick={()=>void act(async()=>{await api(`/api/v1/coordination/${gathering.id}/cancel`, 'POST');await load();setCancelOpen(false);setMessage(t("飯局已取消", "Invitation cancelled."));})}>{t("確認取消", "Cancel invitation")}</button></div></section></div>}
       {!joined ? <p>{t("你目前只管理飯局。可在主揪設定選擇參加。","You are managing this gathering. Join from Host controls.")}</p> : locked ? <p>{t("填寫已鎖定 ·", "Replies closed ·")}{gathering.status === "draft" ? t("發布後即可填寫", "Publish to open replies") : gathering.status === "cancelled" ? t("已取消", "Cancelled") : gathering.status === "finalized" ? t("已拍板", "Finalized") : t("已截止", "Deadline passed")}</p> : <>
         <ol className="dining-steps"><li>01 {t('填寫我的時間','Mark my times')}</li><li>02 {t('檢查並提交','Review & submit')}</li><li>03 {t('主揪拍板','Host finalizes')}</li></ol>
         <div className="dining-workspace"><details className="optional-import"><summary>{t('匯入我的時間','Import my availability')}</summary>

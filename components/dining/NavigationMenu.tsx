@@ -16,14 +16,15 @@ export default function NavigationMenu({ accountEnabled = true, onRefresh, refre
   const trigger = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
+  const [accountEmail, setAccountEmail] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
   useEffect(() => {
     if (!accountEnabled) return;
     let active = true;
     const client = getSupabaseBrowserClient();
-    void client?.auth.getUser().then(({ data }) => { if (active) setSignedIn(Boolean(data.user)); });
-    const subscription = client?.auth.onAuthStateChange((_event, session) => setSignedIn(Boolean(session?.user)));
+    void client?.auth.getUser().then(({ data }) => { if (active) { setSignedIn(Boolean(data.user)); setAccountEmail(data.user?.email ?? null); } });
+    const subscription = client?.auth.onAuthStateChange((_event, session) => { setSignedIn(Boolean(session?.user)); setAccountEmail(session?.user?.email ?? null); });
     return () => { active = false; subscription?.data.subscription.unsubscribe(); };
   }, [accountEnabled]);
   useEffect(() => {
@@ -47,6 +48,7 @@ export default function NavigationMenu({ accountEnabled = true, onRefresh, refre
   return <div className="navigation-menu" ref={root}>
     <button ref={trigger} type="button" className="navigation-toggle" aria-label={t("選單", "Menu")} aria-expanded={open} aria-controls="account-navigation" onClick={() => setOpen(value => !value)}><Menu size={22} aria-hidden="true"/></button>
     {open && <nav id="account-navigation" className="navigation-panel" aria-label={t("帳號與語言", "Account and language")}>
+      {signedIn && accountEmail && <p className="navigation-account">{accountEmail}</p>}
       {accountEnabled && <>
         <Link href="/" onClick={()=>setOpen(false)}>{t('接下來的聚會','Upcoming')}</Link>
         <Link href="/hosting" onClick={()=>setOpen(false)}>{t('我發起的','Hosting')}</Link>
