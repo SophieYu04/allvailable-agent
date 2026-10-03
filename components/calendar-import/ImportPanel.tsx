@@ -71,6 +71,7 @@ export default function ImportPanel({ dailyStart, dailyEnd, onCardApplied, compa
   useEffect(() => {
     alive.current = true;
     const epochRef = operationEpoch;
+    const restoreEpoch = epochRef.current;
     let cancelled = false;
     try { cancelledUploads.current = new Set(JSON.parse(localStorage.getItem('allvailable.cancelledUploads') ?? '[]')); } catch {}
     transport('/api/calendar-imports').then(async r => {
@@ -78,7 +79,7 @@ export default function ImportPanel({ dailyStart, dailyEnd, onCardApplied, compa
       const body = await r.json() as { imports?: (ImportData & {id:string;gathering_id?:string;expires_at:string;idempotency_key?:string})[]; webAudioAvailable?: boolean };
       if (!cancelled) setWebAudioAvailable(body.webAudioAvailable === true);
       const saved = body.imports?.find(item => !cancelledUploads.current.has(item.idempotency_key ?? '') && (gatheringId ? item.gathering_id === gatheringId : !item.gathering_id));
-      if (!cancelled && saved && !pending.current && !mutex.current) setData({ ...saved, importId: saved.id, version: String(saved.version), expiresAt: saved.expires_at });
+      if (!cancelled && restoreEpoch === epochRef.current && saved && !dataRef.current && !pending.current && !mutex.current) setData({ ...saved, importId: saved.id, version: String(saved.version), expiresAt: saved.expires_at });
     }).catch(() => { if (!cancelled) setWebAudioAvailable(false); });
     return () => { cancelled = true; alive.current = false; ++epochRef.current; uploadController.current?.abort(); capture.current?.cancel(); speech.current?.stop(); liveClient.current?.cancel();audioCaptionController.current?.abort(); };
   }, [gatheringId, transport]);
@@ -202,6 +203,7 @@ export default function ImportPanel({ dailyStart, dailyEnd, onCardApplied, compa
     else if(recordedClip)completeRecording(recordedClip);
   }
   function beginMethod(method:Method, fresh=false) {
+    ++operationEpoch.current;
     setSwitchTo(null);
     if(method==='manual'){onManualEntry?.();return;}
     if(method==='screenshot')fileInput.current?.click();
