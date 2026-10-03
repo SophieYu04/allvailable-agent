@@ -67,7 +67,7 @@ export default function ImportPanel({ dailyStart, dailyEnd, onCardApplied, compa
   const interactionLocked = busy || liveBusy || (recording && !liveMode) || captureStarting || Boolean(recordedClip);
   const status = (s: string) => ({ green: t('可以', 'Available'), red: t('忙碌', 'Busy'), yellow: t('待確認', 'Tentative'), unknown: t('未填', 'Unknown') }[s] ?? s);
   useEffect(() => () => onActivity?.(false), [onActivity]);
-  useEffect(() => { onActivity?.(busy || recording || captureStarting || Boolean(data) || Boolean(recordedClip) || savedInputs.length>0); }, [busy, recording, captureStarting, data, recordedClip, savedInputs.length, onActivity]);
+  useEffect(() => { onActivity?.(busy || liveBusy || recording || captureStarting || Boolean(data) || Boolean(recordedClip)); }, [busy, liveBusy, recording, captureStarting, data, recordedClip, onActivity]);
   useEffect(() => {
     alive.current = true;
     const epochRef = operationEpoch;
@@ -216,7 +216,6 @@ export default function ImportPanel({ dailyStart, dailyEnd, onCardApplied, compa
     const method=switchTo;
     const proceed=(clip=recordedClip)=>{
       const current=dataRef.current;
-      if(keep&&method==='manual'){setRecordedClip(clip);beginMethod(method);return;}
       if(keep)setSavedInputs(old=>[...old,{data:current,clip,transcript:transcriptRef.current,pending:pending.current,answers}]);
       else if(current)void transport(`/api/calendar-imports/${current.importId}`,{method:'DELETE'});
       if(uploading)cancelUpload();
