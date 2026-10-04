@@ -22,3 +22,8 @@ it('replaces per-day pending cards with one recurring card from the completed cu
  const cells=patchFromEvents([{...merged.events[0],userConfirmed:true}],{startDate:'2026-10-05',endDate:'2026-10-09'},{});
  expect(Object.keys(cells)).toHaveLength(10);for(const day of ['05','06','07','08','09'])expect(cells[`2026-10-${day}-19:00`]).toBe('red');
 });
+it('does not lose a pending card when a later transcript snapshot returns no events',()=>{
+ const base=syntheticExtraction();base.questions=[];base.events=base.events.slice(0,1).map(e=>({...e,userConfirmed:false}));
+ base.liveVoice={startedAt:Date.now(),calls:2,closed:false,seen:base.events.map(eventFingerprint)};
+ expect(mergeLiveVoice(base,{...base,events:[]},'same retained transcript').events).toEqual(base.events);
+});

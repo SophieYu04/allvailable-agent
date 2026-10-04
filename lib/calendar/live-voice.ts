@@ -1,4 +1,5 @@
 import type {Extraction} from './schemas';
+import {occurrenceDates} from './slots';
 export const LIVE_VOICE_CALL_LIMIT=8;
 export const LIVE_VOICE_WINDOW_MS=180_000;
 /** Titles are optional on availability. Identity is the actual interval/status. */
@@ -11,7 +12,11 @@ export function mergeLiveVoice(current:Extraction,incoming:Extraction,transcript
  // Every request contains the cumulative transcript. Replace pending fragments
  // with its latest complete interpretation, while preserving reviewed decisions.
  const incomingKeys=new Set(incoming.events.map(eventFingerprint));
- const superseded=current.events.filter(event=>event.userConfirmed!==true&&!incomingKeys.has(eventFingerprint(event)));
+ const superseded=current.events.filter(old=>old.userConfirmed!==true&&!incomingKeys.has(eventFingerprint(old))&&incoming.events.some(next=>{
+  if(next.intent!==old.intent||next.startTime!==old.startTime||next.endTime!==old.endTime||next.sourceTimezone!==old.sourceTimezone||next.allDay!==old.allDay||!next.startDate||next.unresolved.length)return false;
+  if(!old.startDate)return true;
+  return next.recurrence?occurrenceDates(next,{startDate:next.startDate,endDate:next.recurrence.until??next.startDate}).includes(old.startDate):next.startDate===old.startDate;
+ }));
  const supersededIds=new Set(superseded.map(event=>event.id));
  const sameInterval=(old:Extraction['events'][number],event:Extraction['events'][number])=>old.startDate===event.startDate&&old.endDate===event.endDate&&old.startTime===event.startTime&&old.endTime===event.endTime&&old.sourceTimezone===event.sourceTimezone&&old.allDay===event.allDay&&JSON.stringify(old.recurrence)===JSON.stringify(event.recurrence);
  let events=current.events.filter(event=>!supersededIds.has(event.id)||incoming.events.some(next=>sameInterval(event,next)));

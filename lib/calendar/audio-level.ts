@@ -5,10 +5,10 @@ export function microphoneLevel(samples: Float32Array) {
   if (rms <= 0.001) return 0;
   return Math.min(1, Math.max(0, (20 * Math.log10(rms) + 60) / 60));
 }
-export function observeMicrophoneLevel(stream: MediaStream, onLevel: (level: number) => void): () => void {
+export function observeMicrophoneLevel(stream: MediaStream, onLevel: (level: number) => void, sharedContext?: AudioContext): () => void {
   const Constructor = (window as unknown as {AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext}).AudioContext ?? (window as unknown as {webkitAudioContext?: typeof AudioContext}).webkitAudioContext;
-  if (!Constructor) return () => onLevel(0);
-  const context = new Constructor();
+  if (!sharedContext && !Constructor) { onLevel(0); return () => {}; }
+  const context = sharedContext ?? new Constructor!();
   const source = context.createMediaStreamSource(stream);
   const analyser = context.createAnalyser();
   analyser.fftSize = 1024;
@@ -28,7 +28,7 @@ export function observeMicrophoneLevel(stream: MediaStream, onLevel: (level: num
     if (stopped) return;
     stopped = true; cancelAnimationFrame(frame);
     source.disconnect(); analyser.disconnect();
-    void context.close().catch(() => {});
+    if (!sharedContext) void context.close().catch(() => {});
     onLevel(0);
   };
 }

@@ -64,3 +64,20 @@ it('can record again after a completed clip fails downstream recognition',async(
  await capture.start(done,vi.fn());expect(capture.isActive()).toBe(true);capture.stop();
  expect(done).toHaveBeenCalledTimes(2);expect(acquire).toHaveBeenCalledTimes(2);expect(second.track.stop).toHaveBeenCalled();
 });
+it('unlocks one audio context before microphone permission and retains final PCM samples for transcription',async()=>{
+ const order:string[]=[];const f=fake();const done=vi.fn();
+ const processor={onaudioprocess:null as ((e:{inputBuffer:{getChannelData:()=>Float32Array}})=>void)|null,connect:vi.fn(),disconnect:vi.fn()};
+ const source={connect:vi.fn(),disconnect:vi.fn()},gain={gain:{value:1},connect:vi.fn(),disconnect:vi.fn()};
+ const close=vi.fn(async()=>{}),resume=vi.fn(async()=>{order.push('resume');});
+ class Context {sampleRate=16000;destination={};resume=resume;close=close;constructor(){order.push('context');}createMediaStreamSource(){return source;}createScriptProcessor(){return processor;}createGain(){return gain;}}
+ vi.stubGlobal('window',{AudioContext:Context});
+ try{
+  const capture=createAudioCapture({acquire:async()=>{order.push('acquire');return f.stream;},create:f.create,observe:()=>()=>{}});
+  await capture.start(done,vi.fn(),vi.fn(),vi.fn());
+  expect(order.slice(0,3)).toEqual(['context','resume','acquire']);
+  processor.onaudioprocess!({inputBuffer:{getChannelData:()=>new Float32Array([.5,-.5])}});
+  capture.stop();expect(done.mock.calls[0][1]).toBe('audio/wav');
+  const wave=new DataView(await done.mock.calls[0][0].arrayBuffer());expect(wave.getUint32(40,true)).toBe(4);expect(wave.getInt16(44,true)).toBe(16383);
+  expect(close).toHaveBeenCalledOnce();expect(processor.onaudioprocess).toBeNull();
+ }finally{vi.unstubAllGlobals();}
+});

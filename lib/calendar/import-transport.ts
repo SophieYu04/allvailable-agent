@@ -1,7 +1,7 @@
 import { apiFetch } from '@/lib/api-fetch';
 import type { Extraction } from './schemas';
 export type ImportTransport = (path: string, init?: RequestInit) => Promise<Response>;
-const english:Record<string,string>={AI_REQUEST_IN_PROGRESS:'Another AI import is processing. Please retry shortly.',AI_QUOTA_EXCEEDED:'Free processing limit reached. Use manual entry.',VERSION_CONFLICT:'The import changed. Please retry.',AUDIO_NO_SPEECH:'No speech detected. Please record again.',AI_DISABLED:'AI import is unavailable.',IMPORT_EXPIRED:'This import expired. Upload again.',REVIEW_REQUIRED:'Complete the card details first.',IMAGE_INVALID:'Image format or size is unsupported.'};
+const english:Record<string,string>={UNAUTHENTICATED:'Please sign in again.',LIVE_SESSION_CLOSED:'This recording session has ended. Record again.',LIVE_SESSION_LIMIT:'Finish this recording, then start a new one.',LIVE_PROCESS_FAILED:'Voice processing failed. Your recording is retained. Please retry.',CLOUDFLARE_AUDIO_FAILED:'Speech recognition is temporarily unavailable. Retry the retained recording.',AUDIO_INVALID:'Recording format or size is unsupported.',AI_REQUEST_IN_PROGRESS:'Another AI import is processing. Please retry shortly.',AI_QUOTA_EXCEEDED:'Free processing limit reached. Use manual entry.',VERSION_CONFLICT:'The import changed. Please retry.',AUDIO_NO_SPEECH:'No speech detected. Please record again.',AI_DISABLED:'AI import is unavailable.',IMPORT_EXPIRED:'This import expired. Upload again.',REVIEW_REQUIRED:'Complete the card details first.',IMAGE_INVALID:'Image format or size is unsupported.'};
 export function createImportTransport(fetcher:ImportTransport,language:()=>string,retries=15):ImportTransport {
  return async(path,init)=>{
   for(let attempt=0;;attempt++){

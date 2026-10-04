@@ -7,12 +7,14 @@ export function createAudioCapture(deps: Dependencies = { acquire: () => navigat
   let timer: ReturnType<typeof setTimeout> | null = null;
   let active = false;
   let stopLevel: (() => void) | null = null;
-  let stopPrefixes: (() => void) | null = null;
+  let stopPrefixes: ((()=>void)&{finish?:()=>Blob|null}) | null = null;
+  let audioContext: AudioContext | null = null;
+  const closeContext=()=>{if(audioContext){void audioContext.close().catch(()=>{});audioContext=null;}};
   const release = (recorder: MediaRecorder) => recorder.stream.getTracks().forEach(track => track.stop());
   const cancel = () => {
     generation++; active = false;
     stopLevel?.(); stopLevel = null;
-    stopPrefixes?.(); stopPrefixes = null;
+    stopPrefixes?.(); stopPrefixes = null;closeContext();
     if (timer) clearTimeout(timer);
     timer = null;
     if (media) { media.onstop = null; media.ondataavailable = null; if (media.state !== 'inactive') media.stop(); release(media); media = null; }
@@ -27,6 +29,9 @@ export function createAudioCapture(deps: Dependencies = { acquire: () => navigat
       const token = ++generation;
       let stream: MediaStream | undefined;
       try {
+        // Unlock one shared audio graph while the recording tap is still a user gesture.
+        const Constructor=typeof window==='undefined'?undefined:(window as unknown as {AudioContext?:typeof AudioContext;webkitAudioContext?:typeof AudioContext}).AudioContext??(window as unknown as {webkitAudioContext?:typeof AudioContext}).webkitAudioContext;
+        if(Constructor&&(onProgress||onLevel)){try{audioContext=new Constructor();void audioContext.resume().catch(()=>{});}catch{audioContext=null;}}
         stream = await deps.acquire();
         if (token !== generation) { stream.getTracks().forEach(track => track.stop()); return; }
         const recorder = deps.create(stream); media = recorder;
@@ -36,18 +41,19 @@ export function createAudioCapture(deps: Dependencies = { acquire: () => navigat
           if(onProgress&&!stopPrefixes&&recorder.state==='recording'&&Date.now()-lastProgress>=5000){lastProgress=Date.now();const mime=(recorder.mimeType||'audio/webm').split(';')[0];onProgress(new Blob(chunks,{type:mime}),mime);}
         };
         recorder.onstop = () => {
+          const wave=token===generation?stopPrefixes?.finish?.():null;
           release(recorder);
           if (token !== generation || media !== recorder) return;
           stopLevel?.(); stopLevel = null;
-          stopPrefixes?.(); stopPrefixes = null;
+          stopPrefixes?.(); stopPrefixes = null;closeContext();
           if (timer) clearTimeout(timer); timer = null;
           media = null; active = false;
           const mime = (recorder.mimeType || 'audio/webm').split(';')[0];
-          onComplete(new Blob(chunks, { type: mime }), mime);
+          onComplete(wave??new Blob(chunks, { type: mime }),wave?'audio/wav':mime);
         };
         recorder.start(onProgress?1000:undefined);
-        if(onProgress){try{stopPrefixes=observeAudioPrefixes(stream,(blob,mime)=>{if(token===generation&&active)onProgress(blob,mime);});}catch{stopPrefixes=null;}}
-        if (onLevel) { try { stopLevel = (deps.observe ?? observeMicrophoneLevel)(stream, onLevel); } catch { onLevel(0); } }
+        if(onProgress){try{stopPrefixes=observeAudioPrefixes(stream,(blob,mime)=>{if(token===generation&&active)onProgress(blob,mime);},audioContext??undefined);}catch{stopPrefixes=null;}}
+        if (onLevel) { try { stopLevel = (deps.observe ?? observeMicrophoneLevel)(stream, onLevel,audioContext??undefined); } catch { onLevel(0); } }
         onStarted();
         timer = setTimeout(() => { if (recorder.state === 'recording') recorder.stop(); }, 60000);
       } catch (error) { stream?.getTracks().forEach(track => track.stop()); if (token === generation) { cancel(); throw error; } }
