@@ -204,3 +204,5 @@ main.dining[tabindex="-1"]:focus{outline:none}
 .import-switch-dialog .dining-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .import-switch-dialog .dining-actions button { min-height: 44px; padding: 10px 16px; border: 1px solid #dce5df; border-radius: 10px; background: #fff; color: #233c31; cursor: pointer; }
 .import-switch-dialog .dining-actions button:first-child { background: #215f50; border-color: #215f50; color: #fff; }
+
+.dining .review-discard-stack{position:absolute;top:8px;left:8px;z-index:3;display:grid;place-items:center;width:44px;height:44px;padding:0;border:0;border-radius:50%;background:transparent;color:#637269;font-size:28px;line-height:1}.dining .review-discard-stack:hover{background:#f1f4f1;color:#233d2a}.review-swipe-card:has(.review-discard-stack) .event-review-card{padding-top:42px}

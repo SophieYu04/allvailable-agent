@@ -233,6 +233,20 @@ export default function ImportPanel({ onCardApplied, compact = false, onManualEn
     if(recording){afterCapture.current=proceed;confirmOnStop.current=false;capture.current?.stop();}
     else proceed();
   }
+  function discardCards() {
+    const current=dataRef.current;
+    if(!current||mutex.current)return;
+    audioCaptionController.current?.abort();audioCaptionController.current=null;
+    ++liveGeneration.current;liveClient.current?.cancel();liveClient.current=null;
+    capture.current?.cancel();speech.current?.stop();speech.current=null;
+    afterCapture.current=null;confirmOnStop.current=false;
+    setRecording(false);setCaptureStarting(false);setLiveBusy(false);setLiveMode(false);setRecordingQuestion(undefined);
+    void run(async()=>{
+      await request(`/api/calendar-imports/${current.importId}`,undefined,'DELETE');
+      dataRef.current=null;setData(null);setPreview(null);setSelected([]);setAnswers({});setEditingCard(false);
+      setRecordedClip(null);setLiveTranscript('');transcriptRef.current='';pending.current=null;setCanRetry(false);
+    });
+  }
   function restoreInput(index:number) {
     if(data||recordedClip||recording||busy||liveMode)return;
     const saved=savedInputs[index];
@@ -344,7 +358,7 @@ export default function ImportPanel({ onCardApplied, compact = false, onManualEn
     {data && <>{!liveMode&&data.extraction.transcript && <details className="voice-transcript"><summary>{t('語音逐字稿', 'Transcript')}</summary><p>{data.extraction.transcript}</p></details>}<p className="dining-eyebrow">02 / {t('確認辨識', 'REVIEW')}</p>
       {data.status === 'rejected' ? <p>{t('沒有辨識到日期或空檔，請重試或直接選時段。', 'No dates or availability recognized. Try again or choose times below.')}</p> : <>
         {globalQuestions.map(q => <div className="clarify-field" key={q.id}><label htmlFor={`answer-${q.id}`}>{language === 'zh' ? q.prompt : ({title:'Confirm the item name.',date:'Confirm the full date (including year).',time:'Confirm start and end times.',all_day:'Is this all day, or should it have exact times?',timezone:'Confirm the IANA timezone (e.g. Asia/Taipei).',intent:'Clarify what this item means.',range:'Confirm the date range.'}[q.kind])}</label><input id={`answer-${q.id}`} disabled={interactionLocked} value={answers[q.id] ?? ''} placeholder={q.kind === 'date' ? 'YYYY-MM-DD' : q.kind === 'time' ? '18:00-20:00' : t('輸入答案', 'Your answer')} onChange={e => setAnswers({ ...answers, [q.id]: e.target.value })} /><div className="dining-actions">{q.options?.map(o => <button disabled={interactionLocked} key={o} onClick={() => clarify(q.id, o)}>{o}</button>)}{webAudioAvailable && <button disabled={busy || captureStarting || (recording && recordingQuestion !== q.id)} onClick={() => record(q.id)}>{recording ? t('停止語音回答','Stop recording') : t('用語音回答','Answer by voice')}</button>}<button disabled={interactionLocked || !answers[q.id]?.trim()} onClick={() => clarify(q.id, answers[q.id])}>{t('確認答案', 'Confirm answer')}</button></div></div>)}
-        {activeEvent ? <SwipeReviewCard simple={screenshotMode} key={activeEvent.id} remaining={eventQueue.length} disabled={interactionLocked||editingCard} canConfirm={eventReady} onConfirm={confirmEvent} onSkip={skipEvent} onEdit={editCard}><article className="event-review-card" aria-live="polite">
+        {activeEvent ? <SwipeReviewCard simple={screenshotMode} key={activeEvent.id} remaining={eventQueue.length} disabled={interactionLocked||editingCard} canConfirm={eventReady} onConfirm={confirmEvent} onSkip={skipEvent} onEdit={editCard} onDiscard={discardCards}><article className="event-review-card" aria-live="polite">
           <p className="dining-eyebrow">{t('逐筆確認', 'ONE AT A TIME')} · {data.extraction.events.length - eventQueue.length + 1}/{data.extraction.events.length}</p>
           <h3 ref={cardHeading} tabIndex={-1}>{(screenshotMode||voiceEvent)?`${cardDate} ${activeEvent.allDay?t('全天','All day'):`${activeEvent.startTime??'—'}~${activeEvent.endTime??'—'}`}`:activeEvent.label ?? t('未命名事項', 'Untitled item')}</h3>
           {!screenshotMode&&<p>
