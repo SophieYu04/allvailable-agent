@@ -49,12 +49,12 @@ body:has(.workflow-home),body:has(.workflow-detail){background:#f6f7f5}
 .timetable-palette { display:flex; gap:14px; justify-content:flex-end; padding:8px 4px 20px; }
 .dining .timetable-swatch { width:28px; height:28px; min-height:28px; padding:0; border:1px solid rgba(36,64,51,.18); border-radius:50%; }
 .dining .timetable-swatch[aria-pressed="true"] { outline:2px solid #345c4c; outline-offset:4px; }
-.timetable-scroll { overflow-x:auto; padding:4px; }
+.timetable-scroll { overflow:auto; max-height:360px; position:relative; padding:4px; overscroll-behavior:contain; }
 .timetable { display:grid; align-items:stretch; min-width:100%; }
 .timetable-row { display:contents; }
-.timetable-date { padding:0 8px 16px; text-align:center; font-size:13px; font-weight:500; }
+.timetable-date { position:sticky; top:0; z-index:2; background:var(--paper,#faf9f5); padding:0 8px 16px; text-align:center; font-size:13px; font-weight:500; }
 .timetable-time { font-size:11px; color:#788178; padding:0 10px 0 0; position:relative; top:-7px; text-align:right; font-variant-numeric:tabular-nums; }
-.dining .timetable-cell { height:32px; min-height:32px; padding:0; border:1px solid #e2e6df; border-radius:0; margin:0; touch-action:none; box-shadow:none; transition:background-color 100ms; }
+.dining .timetable-cell { height:32px; min-height:32px; padding:0; border:1px solid #e2e6df; border-radius:0; margin:0; touch-action:pan-x pan-y; box-shadow:none; transition:background-color 100ms; }
 .dining .timetable-cell.status-unknown { background:transparent; }
 .dining .timetable-cell.status-green,.dining .timetable-swatch.status-green { background:#9ccbb0; }
 .dining .timetable-cell.status-yellow,.dining .timetable-swatch.status-yellow { background:#eed589; }

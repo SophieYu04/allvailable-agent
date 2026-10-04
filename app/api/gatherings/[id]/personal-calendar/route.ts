@@ -13,7 +13,7 @@ export async function GET(request: Request, context: Context) {
     if (gatheringError || !gathering) return jsonError(404, "GATHERING_NOT_FOUND", "找不到飯局");
     const [{ data: draft }, shared] = await Promise.all([
       supabase.from("availability_drafts").select("cells,version").eq("gathering_id", id).eq("user_id", user.id).maybeSingle(),
-      loadSharedBusy(supabase, user.id, gathering.date_start, gathering.date_end, gathering.daily_start, gathering.daily_end),
+      loadSharedBusy(supabase, user.id, gathering.date_start, gathering.date_end, "00:00", "24:00"),
     ]);
     const current = (draft?.cells ?? {}) as Record<string, "unknown" | "green" | "yellow" | "red">;
     const changes = Object.keys(shared).filter((key) => current[key] !== shared[key]).map((key) => ({ key, before: current[key] ?? "unknown", after: shared[key] }));
@@ -30,7 +30,7 @@ export async function POST(request: Request, context: Context) {
     const expectedVersion = decimalVersion(body.expectedDraftVersion);
     const { data: gathering } = await supabase.from("gatherings").select("date_start,date_end,daily_start,daily_end").eq("id", id).single();
     if (!gathering) return jsonError(404, "GATHERING_NOT_FOUND", "找不到飯局");
-    const shared = await loadSharedBusy(supabase, user.id, gathering.date_start, gathering.date_end, gathering.daily_start, gathering.daily_end);
+    const shared = await loadSharedBusy(supabase, user.id, gathering.date_start, gathering.date_end, "00:00", "24:00");
     const { data: draft } = await supabase.from("availability_drafts").select("cells,version").eq("gathering_id", id).eq("user_id", user.id).eq("version", expectedVersion).single();
     if (!draft) return jsonError(409, "VERSION_CONFLICT", "草稿已被更新，請重新載入", true);
     const cells = { ...((draft.cells ?? {}) as Record<string, string>) };

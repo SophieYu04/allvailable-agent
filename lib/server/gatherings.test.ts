@@ -37,9 +37,9 @@ describe("gatheringInputSchema", () => {
     expect(gatheringInputSchema.safeParse({ ...base, duration: 75 }).success).toBe(false);
   });
 
-  it("rejects availability cells outside the configured window", () => {
+  it("accepts all hours but rejects dates outside the invitation", () => {
     const gathering = { date_start: "2026-09-21", date_end: "2026-09-21", daily_start: "08:00:00", daily_end: "24:00:00" };
-    expect(() => validateGatheringCells({ "2026-09-21-07:30": "green" }, gathering)).toThrow("CELL_OUT_OF_RANGE");
+    expect(() => validateGatheringCells({ "2026-09-21-07:30": "green", "2026-09-21-23:30":"red" }, gathering)).not.toThrow();
     expect(() => validateGatheringCells({ "2026-09-22-08:00": "green" }, gathering)).toThrow("CELL_OUT_OF_RANGE");
   });
 });

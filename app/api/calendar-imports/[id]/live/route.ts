@@ -28,13 +28,14 @@ export async function POST(request:Request,context:{params:Promise<{id:string}>}
  if(body.data.transcript===current.transcript)return respond(row);
  // Each inference also consumes an independent daily quota, so editable import
  // metadata cannot bypass the provider usage ceiling.
- const {data:quota,error:quotaError}=await supabase.rpc('consume_ai_quota',{p_idempotency_key:crypto.randomUUID(),p_user_limit:Number(process.env.AI_DAILY_USER_LIMIT??3),p_global_limit:Number(process.env.AI_DAILY_GLOBAL_LIMIT??120)});
- if(quotaError)return jsonError(503,'QUOTA_UNAVAILABLE','目前無法確認用量',true);
- if(!(quota as {allowed?:boolean}|null)?.allowed)return jsonError(429,'AI_QUOTA_EXCEEDED','今日免費處理次數已用完；請完成錄音，再手動補上其餘時間');
- const lockId=crypto.randomUUID();
+ const requestKey=request.headers.get('Idempotency-Key')??'';
+ const lockId=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestKey)?requestKey:crypto.randomUUID();
  const {data:locked,error:lockError}=await supabase.rpc('acquire_ai_request',{p_request_id:lockId});
  if(lockError||locked!==true)return jsonError(409,'AI_REQUEST_IN_PROGRESS','另一段辨識正在處理',true);
  try{
+ const {data:quota,error:quotaError}=await supabase.rpc('consume_ai_quota',{p_idempotency_key:crypto.randomUUID(),p_user_limit:Number(process.env.AI_DAILY_USER_LIMIT??3),p_global_limit:Number(process.env.AI_DAILY_GLOBAL_LIMIT??120)});
+ if(quotaError)return jsonError(503,'QUOTA_UNAVAILABLE','目前無法確認用量',true);
+ if(!(quota as {allowed?:boolean}|null)?.allowed)return jsonError(429,'AI_QUOTA_EXCEEDED','今日免費處理次數已用完；請完成錄音，再手動補上其餘時間');
   // Reserve a call before inference. Concurrent or failed requests cannot bypass the cap.
   const reserved={...current,liveVoice:{...session,calls:session.calls+1}};
   const version=nextDecimalVersion(row.version);
@@ -43,6 +44,8 @@ export async function POST(request:Request,context:{params:Promise<{id:string}>}
   let speechContext:{timezone:string;dateStart?:string;dateEnd?:string}={timezone:'Asia/Taipei'};
   if(row.gathering_id){const {data:gathering}=await supabase.from('gatherings').select('date_start,date_end').eq('id',row.gathering_id).single();if(gathering)speechContext={timezone:'Asia/Taipei',dateStart:gathering.date_start,dateEnd:gathering.date_end};}
   const parsed=await analyzeImport({transcript:body.data.transcript,speechContext});
+  const {data:stillActive}=await supabase.rpc('ai_request_is_active',{p_request_id:lockId});
+  if(stillActive!==true)return jsonError(409,'AI_CANCELLED','Cancelled.');
   const events=parsed.events.filter(e=>e.intent!=='uncertain'&&(e.allDay===true||e.startTime&&e.endTime));const ids=new Set(events.map(e=>e.id));
   const incoming={...parsed,events,questions:parsed.questions.filter(q=>q.eventId&&ids.has(q.eventId))};
   const merged=mergeLiveVoice(reserved,incoming,body.data.transcript!);

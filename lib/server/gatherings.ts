@@ -45,14 +45,12 @@ export function toGatheringRow(input: z.infer<typeof gatheringInputSchema>, user
   return { host_id: userId, name: input.name, date_start: input.dateStart, date_end: input.dateEnd, daily_start: input.dailyStart, daily_end: input.dailyEnd, duration_minutes: input.duration, deadline_at: input.deadline, recommendation_count: input.recommendationCount, status: "open" as const };
 }
 
-/** Reject cells outside the gathering's date and half-hour availability window. */
+/** All 24 hours may be marked within the invitation dates. */
 export function validateGatheringCells(cells: Cells, gathering: { date_start: string; date_end: string; daily_start: string; daily_end: string }) {
-  const startMinute = clockMinutes(gathering.daily_start);
-  const endMinute = clockMinutes(gathering.daily_end);
   for (const key of Object.keys(cells)) {
     const date = key.slice(0, 10);
     const minute = Number(key.slice(11, 13)) * 60 + Number(key.slice(14, 16));
-    if (date < gathering.date_start || date > gathering.date_end || minute < startMinute || minute >= endMinute) {
+    if (date < gathering.date_start || date > gathering.date_end || minute < 0 || minute >= 1440) {
       throw new Error("CELL_OUT_OF_RANGE");
     }
   }

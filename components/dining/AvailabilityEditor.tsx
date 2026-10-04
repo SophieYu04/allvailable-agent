@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useRef, useState, type PointerEvent } from "react";
+import { Fragment, useEffect, useRef, useState, type PointerEvent } from "react";
 import { dateList, timeList } from "@/lib/calendar/slots";
 import type { Cells, SlotStatus } from "@/lib/calendar/types";
 import { useLanguage } from "./Language";
@@ -12,13 +12,15 @@ export default function AvailabilityEditor({ cells, savedCells, onChange, dateSt
 }) {
   const { t, language } = useLanguage();
   const dates = dateList(dateStart, dateEnd);
-  const times = timeList(dailyStart.slice(0, 5), dailyEnd.slice(0, 5));
+  const times = timeList("00:00", "24:00");
+  const scroll = useRef<HTMLDivElement>(null);
+  useEffect(() => { const target=scroll.current?.querySelector<HTMLElement>(`[data-time="${dailyStart.slice(0,5)}"]`); if(scroll.current&&target)scroll.current.scrollTop=Math.max(0,target.offsetTop-40); },[dateStart,dailyStart]);
   const [brush, setBrush] = useState<SlotStatus>("green");
   const [selectedDate, setSelectedDate] = useState(dateStart);
   const [rangeStart, setRangeStart] = useState(dailyStart.slice(0, 5));
   const [rangeEnd, setRangeEnd] = useState(dailyEnd.slice(0, 5));
   const activeDate = dates.includes(selectedDate) ? selectedDate : dateStart;
-  const endTimes = [...times.slice(1), dailyEnd.slice(0, 5)];
+  const endTimes = [...times.slice(1), "24:00"];
   const from = times.includes(rangeStart) ? rangeStart : times[0];
   const until = endTimes.includes(rangeEnd) ? rangeEnd : dailyEnd.slice(0, 5);
   const validRange = Boolean(from && until && until > from);
@@ -59,13 +61,13 @@ export default function AvailabilityEditor({ cells, savedCells, onChange, dateSt
     <div className="timetable-palette" role="group" aria-label={t("這段時間的狀態", "Availability for this range")}>
       {(["green", "yellow", "red"] as const).map(status => <button type="button" key={status} className={"timetable-swatch status-" + status} disabled={disabled} aria-label={labels[status]} aria-pressed={brush === status} onClick={() => setBrush(status)}><span className="swatch-dot" aria-hidden="true"/><span>{labels[status]}</span></button>)}
     </div>
-    <div className="timetable-scroll">
+    <div className="timetable-scroll" ref={scroll}>
       <div className="timetable" style={{ gridTemplateColumns: `52px repeat(${dates.length}, minmax(88px, 1fr))` }} onPointerMove={move} onPointerUp={() => finish()} onPointerCancel={() => finish(true)} onLostPointerCapture={() => finish()}>
         <span className="timetable-corner"/>{dates.map(date => <div className="timetable-date" key={date}>{dayLabel(date)}</div>)}
         {times.map((time, index) => <Fragment key={time}>
           <span className="timetable-time">{time}</span>
-          {dates.map(date => { const status = cells[date + "-" + time] ?? "unknown"; return <button type="button" key={date} data-slot={index} data-date={date} className={"timetable-cell status-" + status + (savedCells && status !== (savedCells[date + "-" + time] ?? "unknown") ? " is-unsaved" : "")} disabled={disabled}
-            aria-label={dayLabel(date) + " " + time + "-" + (times[index + 1] ?? dailyEnd.slice(0, 5)) + ", " + (status === "unknown" ? t("未填", "Not marked") : labels[status])}
+          {dates.map(date => { const status = cells[date + "-" + time] ?? "unknown"; return <button type="button" key={date} data-slot={index} data-date={date} data-time={time} className={"timetable-cell status-" + status + (savedCells && status !== (savedCells[date + "-" + time] ?? "unknown") ? " is-unsaved" : "")} disabled={disabled}
+            aria-label={dayLabel(date) + " " + time + "-" + (times[index + 1] ?? "24:00") + ", " + (status === "unknown" ? t("未填", "Not marked") : labels[status])}
             onPointerDown={event => {
               if (disabled || event.button !== 0 || event.pointerType === "touch") return;
               pointerHandled.current = true;
@@ -76,7 +78,7 @@ export default function AvailabilityEditor({ cells, savedCells, onChange, dateSt
             }}
             onClick={() => { if (!disabled && !pointerHandled.current) onChange(paint(cells, date, index, index, status === "unknown" ? brush : "unknown")); pointerHandled.current = false; }}/>; })}
         </Fragment>)}
-        <span className="timetable-time timetable-end">{dailyEnd.slice(0, 5)}</span>
+        <span className="timetable-time timetable-end">{"24:00"}</span>
       </div>
     </div>
   </section>;

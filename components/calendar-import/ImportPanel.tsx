@@ -13,7 +13,7 @@ import {occurrenceDates} from '@/lib/calendar/slots';
 import type { Cells } from '@/lib/calendar/types';
 import { useLanguage } from '@/components/dining/Language';
 type Props = { dailyStart?: string; dailyEnd?: string; onCardApplied?: (cells:Cells)=>void; compact?: boolean; onManualEntry?: () => void; transport?: ImportTransport; sampleUploadLabel?: string; gatheringId?: string; dateStart?: string; dateEnd?: string; draftVersion?: string; currentCells?: Cells; personalVersion?: string; onApplied?: (cells: Cells, version?: string) => void; beforePreview?: () => Promise<string>; onActivity?: (active: boolean) => void };
-export default function ImportPanel({ dailyStart, dailyEnd, onCardApplied, compact = false, onManualEntry, transport = browserImportTransport, sampleUploadLabel, gatheringId, dateStart, dateEnd, draftVersion = '1', personalVersion = '1', currentCells = {}, onApplied, beforePreview, onActivity }: Props) {
+export default function ImportPanel({ onCardApplied, compact = false, onManualEntry, transport = browserImportTransport, sampleUploadLabel, gatheringId, dateStart, dateEnd, draftVersion = '1', personalVersion = '1', currentCells = {}, onApplied, beforePreview, onActivity }: Props) {
   const { t, language } = useLanguage();
   const [data, setData] = useState<ImportData | null>(null);
   type Method = 'screenshot' | 'voice' | 'manual';
@@ -78,7 +78,7 @@ export default function ImportPanel({ dailyStart, dailyEnd, onCardApplied, compa
       if (!r.ok) { if (!cancelled) setWebAudioAvailable(false); return; }
       const body = await r.json() as { imports?: (ImportData & {id:string;gathering_id?:string;expires_at:string;idempotency_key?:string})[]; webAudioAvailable?: boolean };
       if (!cancelled) setWebAudioAvailable(body.webAudioAvailable === true);
-      const saved = body.imports?.find(item => !cancelledUploads.current.has(item.idempotency_key ?? '') && (gatheringId ? item.gathering_id === gatheringId : !item.gathering_id));
+      const saved = body.imports?.find(item => !cancelledUploads.current.has(item.idempotency_key ?? '') && item.extraction.events.some(event=>event.userConfirmed!==true) && (gatheringId ? item.gathering_id === gatheringId : !item.gathering_id));
       if (!cancelled && restoreEpoch === epochRef.current && saved && !dataRef.current && !pending.current && !mutex.current) setData({ ...saved, importId: saved.id, version: String(saved.version), expiresAt: saved.expires_at });
     }).catch(() => { if (!cancelled) setWebAudioAvailable(false); });
     return () => { cancelled = true; alive.current = false; ++epochRef.current; uploadController.current?.abort(); capture.current?.cancel(); speech.current?.stop(); liveClient.current?.cancel();audioCaptionController.current?.abort(); };
@@ -110,6 +110,7 @@ export default function ImportPanel({ dailyStart, dailyEnd, onCardApplied, compa
       const body = await r.json() as ImportData & {error?:{message?:string}};
       if (!r.ok) throw new Error(body.error?.message ?? t('上傳失敗，檔案已保留', 'Upload failed. Your files are retained.'));
       if (!alive.current || controller.signal.aborted) return;
+      if(!body.extraction.events.length){void transport(`/api/calendar-imports/${body.importId}`,{method:'DELETE'});pending.current=null;setCanRetry(false);setData(null);return;}
       setData(body); setPreview(null); setSelected([]); setAnswers({}); pending.current = null; setCanRetry(false);
       const first = body.extraction.visibleRanges?.[0];
       if (!dateStart && first) setRange({ startDate: first.startDate, endDate: first.endDate });
@@ -121,6 +122,7 @@ export default function ImportPanel({ dailyStart, dailyEnd, onCardApplied, compa
     uploadController.current?.abort(); uploadController.current = null;
     mutex.current = false; setUploading(false); setBusy(false); setError('');
     if (pending.current) {
+      void transport(`/api/calendar-imports/requests/${pending.current.key}`,{method:'DELETE'});
       cancelledUploads.current.add(pending.current.key);
       try { localStorage.setItem('allvailable.cancelledUploads', JSON.stringify([...cancelledUploads.current].slice(-100))); } catch {}
     }
@@ -140,7 +142,7 @@ export default function ImportPanel({ dailyStart, dailyEnd, onCardApplied, compa
     if(canLive)liveClient.current=createLiveVoiceClient({transport,gatheringId,getData:()=>dataRef.current,isIdle:()=>!mutex.current,
       onData:next=>{if(alive.current&&generation===liveGeneration.current){dataRef.current=next;setData(next);}},
       onBusy:active=>{if(generation!==liveGeneration.current)return;mutex.current=active;if(alive.current)setLiveBusy(active);},
-      onError:message=>{if(alive.current&&generation===liveGeneration.current)setError(message);},
+      onError:message=>{if(alive.current&&generation===liveGeneration.current)setError(message==='Retry live processing'?t('重試即時處理','Retry live processing'):message);},
       onFinished:()=>{if(alive.current&&generation===liveGeneration.current){setLiveMode(false);setRecordedClip(null);const current=dataRef.current;if(current&&current.extraction.events.every(e=>e.userConfirmed)){void transport(`/api/calendar-imports/${current.importId}`,{method:'DELETE'});dataRef.current=null;setData(null);}}}
     });
     try {
@@ -269,16 +271,13 @@ export default function ImportPanel({ dailyStart, dailyEnd, onCardApplied, compa
       let changes:Preview['changes']=[];
       if(onCardApplied){
         const single={...data.extraction,events:[candidate],questions:[]};
-        const calculated=buildPreview(single,{...range,currentCells,slotStart:dailyStart,slotEnd:dailyEnd});
+        const calculated=buildPreview(single,{...range,currentCells,slotStart:'00:00',slotEnd:'24:00'});
         if(calculated.blockedImport||calculated.blockedReview)throw new Error(t('請先補齊卡片資料','Complete the card details first.'));
-        const inRange=candidate.startDate!<=range.endDate&&candidate.endDate!>=range.startDate;
-        if(!inRange)throw new Error(t('日期不在邀約範圍內，請編輯卡片。','Outside invitation dates. Edit the card.'));
         changes=calculated.changes;
-        if(!changes.length)throw new Error(t('這張卡片沒有可新增的時段：請檢查時間，或略過已填好的項目。','No new slots in this window. Edit the time or skip an already filled item.'));
       }
-      const body=await request<ImportData>(`/api/calendar-imports/${data.importId}`,{action:'edit_event',version:data.version,eventId:activeEvent.id,changes:{reviewed:true}});
+      const body=await request<ImportData>(`/api/calendar-imports/${data.importId}`,{action:'confirm_event',version:data.version,eventId:activeEvent.id});
       const nextData={...data,...body,version:String(body.version)};
-      if(onCardApplied){const next={...currentCells};changes.forEach(c=>{next[c.key]=c.after as Cells[string];});onCardApplied(next);}
+      if(onCardApplied&&changes.length){const next={...currentCells};changes.forEach(c=>{next[c.key]=c.after as Cells[string];});onCardApplied(next);}
       setData(nextData);setPreview(null);setEditingCard(false);
       if(onCardApplied&&!liveMode&&nextData.extraction.events.every(e=>e.userConfirmed)){
         await request(`/api/calendar-imports/${data.importId}`,undefined,'DELETE');setData(null);

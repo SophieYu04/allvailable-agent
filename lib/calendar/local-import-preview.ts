@@ -57,9 +57,9 @@ export function createLocalImportPreview(storage: Store, changed: () => void = (
       const data = state.data;
       if (!data) return problem('Import is closed. Load the sample again.', 404);
       if (body.version !== data.version) return problem('Import changed. Reload to restore your progress.', 409);
-      if (body.action === 'edit_event' || body.action === 'clarify') {
+      if (body.action === 'edit_event' || body.action === 'confirm_event' || body.action === 'clarify') {
         const extraction = body.action === 'clarify' ? clarifyExtraction(data.extraction, body.answer.questionId, body.answer.value)
-          : ensureImportQuestions(editDraft(data.extraction, 'edit_event', body.eventId, body.changes));
+          : ensureImportQuestions(editDraft(data.extraction, 'edit_event', body.eventId, body.action==='confirm_event'?{reviewed:true}:body.changes));
         const next = { ...data, extraction, version: String(Number(data.version) + 1), status: extraction.questions.length ? 'needs_clarification' : 'ready' };
         save({ ...state, data: next }); preview = null; return reply(next);
       }

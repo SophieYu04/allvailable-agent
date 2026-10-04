@@ -11,7 +11,7 @@ export function createLiveVoiceClient(input:{transport:ImportTransport;gathering
   running=true;input.onBusy(true);controller=new AbortController();
   try{
    let response:Response;
-   if(data?.extraction.liveVoice){response=await input.transport(`/api/calendar-imports/${data.importId}/live`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({version:data.version,transcript:snapshot}),signal:controller.signal});}
+   if(data?.extraction.liveVoice){response=await input.transport(`/api/calendar-imports/${data.importId}/live`,{method:'POST',headers:{'Content-Type':'application/json','Idempotency-Key':key},body:JSON.stringify({version:data.version,transcript:snapshot}),signal:controller.signal});}
    else{const form=new FormData();form.set('mode','live_voice');form.set('transcript',snapshot);if(input.gatheringId)form.set('gatheringId',input.gatheringId);response=await input.transport('/api/calendar-imports',{method:'POST',headers:{'Idempotency-Key':key},body:form,signal:controller.signal});}
    const body=await response.json() as ImportData & {error?:{message?:string}};if(stopped)return;
    if(!response.ok){
@@ -23,18 +23,18 @@ export function createLiveVoiceClient(input:{transport:ImportTransport;gathering
    processed=snapshot;input.onData({...body,version:String(body.version)});
   }catch(error){if(!stopped)input.onError(error instanceof Error?error.message:'Live processing failed');}
   finally{running=false;input.onBusy(false);}
-  if(!stopped&&(wanted!==snapshot||finishing)){if(processed===snapshot)schedule();else input.onError('請重試即時處理 / Retry live processing');}
+  if(!stopped&&(wanted!==snapshot||finishing)){if(processed===snapshot)schedule();else input.onError('Retry live processing');}
  }
  async function finish(){
   const data=input.getData();if(stopped)return;
   if(data?.extraction.liveVoice&&!data.extraction.liveVoice.closed){
    if(!input.isIdle()){schedule();return;}
    running=true;input.onBusy(true);
-   try{const r=await input.transport(`/api/calendar-imports/${data.importId}/live`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({version:data.version,finish:true})});const body=await r.json() as ImportData & {error?:{message?:string}};if(stopped)return;if(!r.ok)throw new Error(body.error?.message??'Finish failed');input.onData({...body,version:String(body.version)});}
+   try{const r=await input.transport(`/api/calendar-imports/${data.importId}/live`,{method:'POST',headers:{'Content-Type':'application/json','Idempotency-Key':key},body:JSON.stringify({version:data.version,finish:true})});const body=await r.json() as ImportData & {error?:{message?:string}};if(stopped)return;if(!r.ok)throw new Error(body.error?.message??'Finish failed');input.onData({...body,version:String(body.version)});}
    catch(error){if(!stopped)input.onError(error instanceof Error?error.message:'Finish failed');return;}
    finally{running=false;input.onBusy(false);}
   }
   if(!stopped){stopped=true;input.onFinished();}
  }
- return {offer(text:string){if(stopped)return;wanted=text.trim().slice(0,8000);schedule();},finish(text:string){if(stopped)return;finishing=true;wanted=text.trim().slice(0,8000);schedule();},retry(){schedule();},cancel(){stopped=true;clearTimeout(timer);controller?.abort();try{const previous=JSON.parse(localStorage.getItem('allvailable.cancelledUploads')??'[]');localStorage.setItem('allvailable.cancelledUploads',JSON.stringify([...previous,key].slice(-100)));}catch{}return key;}};
+ return {offer(text:string){if(stopped)return;wanted=text.trim().slice(0,8000);schedule();},finish(text:string){if(stopped)return;finishing=true;wanted=text.trim().slice(0,8000);schedule();},retry(){schedule();},cancel(){void input.transport(`/api/calendar-imports/requests/${key}`,{method:'DELETE'});stopped=true;clearTimeout(timer);controller?.abort();try{const previous=JSON.parse(localStorage.getItem('allvailable.cancelledUploads')??'[]');localStorage.setItem('allvailable.cancelledUploads',JSON.stringify([...previous,key].slice(-100)));}catch{}return key;}};
 }

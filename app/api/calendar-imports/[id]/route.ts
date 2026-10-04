@@ -6,7 +6,7 @@ import { buildPreview } from "@/lib/server/calendar-imports";
 import { requireUser } from "@/lib/server/auth";
 import { decimalVersion, jsonError, nextDecimalVersion } from "@/lib/server/http";
 import { validateCells } from "@/lib/calendar/patch";
-import { cellKey } from "@/lib/calendar/slots";
+import { patchFromEvents, cellKey } from "@/lib/calendar/slots";
 import { clarifyExtraction, ImportClarificationError } from "@/lib/calendar/import-clarification";
 
 type Context = { params: Promise<{ id: string }> };
@@ -26,12 +26,24 @@ export async function POST(request: Request, context: Context) {
   const { id } = await context.params;
   try {
     const { supabase, user } = await requireUser(request);
-    const body = await request.json() as { action?: "clarify" | "edit_event" | "add_event" | "apple_preview" | "preview" | "apply"; version?: string; counted?: boolean; answer?: { questionId: string; value: unknown }; eventId?: string; changes?: { title?: string; date?: string; startTime?: string; endTime?: string; delete?: boolean }; range?: { startDate: string; endDate: string }; previewId?: string; selectedKeys?: string[]; selectedChanges?: Array<{ key: string; status: string }>; targetVersion?: string };
+    const body = await request.json() as { action?: "confirm_event" | "clarify" | "edit_event" | "add_event" | "apple_preview" | "preview" | "apply"; version?: string; counted?: boolean; answer?: { questionId: string; value: unknown }; eventId?: string; changes?: { title?: string; date?: string; startTime?: string; endTime?: string; delete?: boolean }; range?: { startDate: string; endDate: string }; previewId?: string; selectedKeys?: string[]; selectedChanges?: Array<{ key: string; status: string }>; targetVersion?: string };
     const { data: importRow, error: importError } = await supabase.from("calendar_imports").select("*").eq("id", id).eq("user_id", user.id).single();
     if (importError || !importRow) return jsonError(404, "IMPORT_NOT_FOUND", "找不到這次匯入");
     if (new Date(importRow.expires_at).getTime() <= Date.now()) return jsonError(410, "IMPORT_EXPIRED", "這次匯入已過期");
     if (String(importRow.version) !== String(body.version)) return jsonError(409, "VERSION_CONFLICT", "匯入內容已更新，請重新載入", true);
     if(importRow.source_kind==='image')importRow.extraction=prepareScreenshotCards(extractionSchema.parse(importRow.extraction),'Asia/Taipei',true);
+    if (body.action === "confirm_event") {
+      const next=editDraft(extractionSchema.parse(importRow.extraction),'edit_event',body.eventId,{reviewed:true});
+      const event=next.events.find(e=>e.id===body.eventId);
+      if(!event||event.unresolved.length||!event.startDate||!event.endDate||(!event.allDay&&(!event.startTime||!event.endTime)))return jsonError(422,'REVIEW_REQUIRED','Complete the card details first.');
+      const last=event.recurrence?.until??event.endDate;
+      const end=new Date(last+'T12:00:00Z');end.setUTCDate(end.getUTCDate()+1);
+      const cells=patchFromEvents([event],{startDate:event.startDate,endDate:end.toISOString().slice(0,10)}, {},false);
+      const changes=Object.entries(cells).map(([key,status])=>({date:key.slice(0,10),minute:Number(key.slice(11,13))*60+Number(key.slice(14)),status}));
+      const {data,error}=await supabase.rpc('confirm_calendar_import_event',{p_import_id:id,p_version:importRow.version,p_event_id:body.eventId,p_changes:changes});
+      if(error)return jsonError(409,'VERSION_CONFLICT','The import changed. Please retry.',true);
+      return NextResponse.json(data);
+    }
     if (body.action === "apple_preview") {
       const events = appleDraftPreview(extractionSchema.parse(importRow.extraction));
       return NextResponse.json({ events, version: String(importRow.version) });
@@ -73,8 +85,8 @@ export async function POST(request: Request, context: Context) {
         if (String(draft.version) !== targetVersion) return jsonError(409, "VERSION_CONFLICT", "草稿已被更新，請重新載入", true);
         if (body.range.startDate < gathering.date_start || body.range.endDate > gathering.date_end) return jsonError(422, "RANGE_OUT_OF_BOUNDS", "預覽範圍需在邀約日期內 / Preview must stay within invitation dates");
         serverCells = validateCells(draft.cells);
-        slotStart = String(gathering.daily_start).slice(0, 5);
-        slotEnd = String(gathering.daily_end).slice(0, 5);
+        slotStart = "00:00";
+        slotEnd = "24:00";
       } else {
         const [{ data: version }, { data: busyCells, error: busyError }] = await Promise.all([
           supabase.from("personal_calendar_versions").select("version").eq("user_id", user.id).maybeSingle(),

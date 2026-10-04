@@ -10,6 +10,7 @@ export function mergeLiveVoice(current:Extraction,incoming:Extraction,transcript
  const seen=new Set(current.liveVoice.seen);
  let events=[...current.events];let questions=[...current.questions];
  for(const event of incoming.events){
+  if(event.allDay&&event.intent==='available')continue;
   const key=eventFingerprint(event);
   const pending=events.filter(old=>old.userConfirmed!==true&&old.startDate===event.startDate&&old.endDate===event.endDate&&old.startTime===event.startTime&&old.endTime===event.endTime&&old.sourceTimezone===event.sourceTimezone&&old.allDay===event.allDay&&JSON.stringify(old.recurrence)===JSON.stringify(event.recurrence));
   const previous=pending.length===1?pending[0]:undefined;

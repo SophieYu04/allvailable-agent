@@ -53,3 +53,15 @@ This exposed and fixed a switching bug: Keep then Add time range retained active
 ## Cancellation race audit
 
 Upload cancellation aborts its request, clears the pending idempotency key and prevents late results from becoming cards. The live-voice cancellation regression test likewise rejects a delayed model response. A code audit additionally found that the initial import-restoration request could arrive after a new input method was selected. Restoration now checks the captured operation epoch and existing active data; selecting a method invalidates the older restoration request. This is code-level evidence; processing cancellation has not yet been verified on a physical phone.
+
+## October 4: full-day and failed-import corrections
+
+Invitation hours now set the initial timetable viewport; all 48 half-hour rows can be scrolled, edited, saved and submitted within the invitation dates. Personal-calendar previews also include all 24 hours. Calendar Available/reminder entries are not converted into Busy cards, and all-day Available voice events do not become cards.
+
+Confirmed cards now atomically save personal intervals and mark review complete. Dates outside the current invitation are accepted into the user’s personal busy dataset; only intersecting dates change the invitation draft. Review swipes use the latest pointer offset, and do not select text.
+
+AI processing-lock errors retry briefly with the same idempotency key, support cancellation while waiting, and display English errors in English mode. Quota is acquired after the processing lock, so an occupied lock cannot consume the daily allowance. Explicit cancellation remembers the request id, releases its own lock, prevents a delayed request starting, and prevents an old model response saving. Finished/empty imports are not restored as blocking cards.
+
+Hosted inference returned exactly two Busy cards for October 6 07:00–08:00 and October 8 09:00–10:00, excluding October 9 all-day Available. A real processing lock returned 409 without recording a quota key. At a 390 × 844 viewport, native right swipes accepted the out-of-invitation October 6 interval into personal_busy_cells, and the October 8 morning interval into the timetable. 00:00 and 23:30 Available were added and the real draft endpoint independently returned version 2 containing all four cells. Native left swipe removed a separate synthetic October 7 card without saving it. Vertical scrolling exposed rows above the initial evening viewport.
+
+199 unit tests in 41 files and five disposable PostgreSQL suites pass; database tests cover full-day save/submit, out-of-invitation personal intervals, idempotency, account isolation and cancellation races. This is browser-size acceptance with disposable synthetic data and real hosted inference, not physical phone microphone acceptance.

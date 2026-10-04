@@ -49,6 +49,11 @@ export async function POST(request: Request) {
     return jsonError(503, code.endsWith("NOT_CONFIGURED") ? code : "NEBIUS_INVALID_ENDPOINT", "此輸入的 AI 模型尚未設定 / This AI input is not configured. Please use manual entry.", false, id);
   }
   const quotaKey = request.headers.get("Idempotency-Key") ?? id;
+  const activeRequestId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(quotaKey)?quotaKey:crypto.randomUUID();
+  const { data: acquired, error: acquireError } = await auth.supabase.rpc("acquire_ai_request", { p_request_id: activeRequestId });
+  if (acquireError) return jsonError(503, "AI_LOCK_UNAVAILABLE", "目前無法開始 AI 匯入，請稍後重試", true, id);
+  if (acquired !== true) return jsonError(409, "AI_REQUEST_IN_PROGRESS", "已有一個 AI 匯入正在處理，請稍候", true, id);
+  try {
   const { data: quota, error: quotaError } = await auth.supabase.rpc("consume_ai_quota", { p_idempotency_key: quotaKey, p_user_limit: Number(process.env.AI_DAILY_USER_LIMIT ?? 3), p_global_limit: Number(process.env.AI_DAILY_GLOBAL_LIMIT ?? 120) });
   if (quotaError) return jsonError(503, "QUOTA_UNAVAILABLE", "目前無法確認 AI 用量，請稍後重試", true, id);
   if (!(quota as { allowed?: boolean } | null)?.allowed) return jsonError(429, "AI_QUOTA_EXCEEDED", "今日 AI 匯入次數已用完，請改用手動填寫", false, id);
@@ -56,15 +61,12 @@ export async function POST(request: Request) {
     const { data: existing } = await auth.supabase.from("calendar_imports").select("id,status,version,extraction,expires_at").eq("user_id", auth.user.id).eq("idempotency_key", quotaKey).single();
     if (existing) return NextResponse.json({ importId: existing.id, status: existing.status, version: String(existing.version), extraction: existing.extraction, expiresAt: existing.expires_at, requestId: id, replayed: true });
   }
-  const activeRequestId = crypto.randomUUID();
-  const { data: acquired, error: acquireError } = await auth.supabase.rpc("acquire_ai_request", { p_request_id: activeRequestId });
-  if (acquireError) return jsonError(503, "AI_LOCK_UNAVAILABLE", "目前無法開始 AI 匯入，請稍後重試", true, id);
-  if (acquired !== true) return jsonError(409, "AI_REQUEST_IN_PROGRESS", "已有一個 AI 匯入正在處理，請稍候", true, id);
-  try {
     const isTimeTree = form.get("mode") === "timetree";
     if (isTimeTree && images.length !== 1) return jsonError(400, "ONE_SCREENSHOT_REQUIRED", "請一次選擇一張 TimeTree 截圖");
     let extraction = isTimeTree ? await extractTimeTree(ocrSchema.parse(JSON.parse(String(form.get("ocr") ?? "[]"))), crypto.randomUUID()) : await analyzeImport({ sourceId: crypto.randomUUID(), images: images.length ? images.map((file, index) => ({ id: crypto.randomUUID(),geometry:imageGeometry[index], dataUrl: `data:${file.type};base64,${imageBytes[index].toString("base64")}` })) : undefined, audio, imageContext, speechContext:imageContext, transcript: liveTranscript || undefined });
-    if(liveTranscript){const events=extraction.events.filter(e=>e.intent!=='uncertain'&&(e.allDay===true||e.startTime&&e.endTime));const ids=new Set(events.map(e=>e.id));extraction={...extraction,events,questions:extraction.questions.filter(q=>q.eventId&&ids.has(q.eventId)),liveVoice:{startedAt:Date.now(),calls:1,closed:false,seen:events.map(eventFingerprint)}};}
+    if(liveTranscript){const events=extraction.events.filter(e=>e.intent!=='uncertain'&&!(e.allDay&&e.intent==='available')&&(e.allDay===true||e.startTime&&e.endTime));const ids=new Set(events.map(e=>e.id));extraction={...extraction,events,questions:extraction.questions.filter(q=>q.eventId&&ids.has(q.eventId)),liveVoice:{startedAt:Date.now(),calls:1,closed:false,seen:events.map(eventFingerprint)}};}
+    const {data:stillActive}=await auth.supabase.rpc('ai_request_is_active',{p_request_id:activeRequestId});
+    if(stillActive!==true)return jsonError(409,'AI_CANCELLED','Cancelled.',false,id);
     const hasUntrustedImage = images.length > 0 && (extraction.sources.length !== images.length || extraction.sources.some((source) => source.kind !== "calendar"));
     const status = liveTranscript ? (extraction.questions.length?'needs_clarification':'ready') : extraction.screenshotValidation?.category === "possible" ? "needs_clarification" : hasUntrustedImage || extraction.sources.length === 0 || extraction.events.length === 0 || extraction.sources.every((source) => source.kind === "unrelated")
       ? "rejected"
