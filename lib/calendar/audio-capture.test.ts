@@ -53,3 +53,14 @@ it('observes the existing recording stream and stops metering on stop and cancel
 });
 
 it('offers complete growing recordings with the container header, not broken standalone chunks',async()=>{vi.useFakeTimers();const f=fake(),progress=vi.fn();const capture=createAudioCapture({acquire:async()=>f.stream,create:f.create});await capture.start(vi.fn(),vi.fn(),undefined,progress);f.media.ondataavailable?.({data:new Blob(['HEADER'])});vi.advanceTimersByTime(5000);f.media.ondataavailable?.({data:new Blob(['FRAME'])});expect(progress).toHaveBeenCalledTimes(1);expect(await progress.mock.calls[0][0].text()).toBe('HEADERFRAME');capture.cancel();vi.advanceTimersByTime(5000);f.media.ondataavailable?.({data:new Blob(['LATE'])});expect(progress).toHaveBeenCalledTimes(1);});
+it('can record again after a completed clip fails downstream recognition',async()=>{
+ const first=fake(),second=fake(),clips:Blob[]=[];
+ const acquire=vi.fn().mockResolvedValueOnce(first.stream).mockResolvedValueOnce(second.stream);
+ const create=vi.fn().mockReturnValueOnce(first.media).mockReturnValueOnce(second.media);
+ const capture=createAudioCapture({acquire,create});
+ const done=vi.fn((clip:Blob)=>clips.push(clip));
+ await capture.start(done,vi.fn());capture.stop();
+ expect(capture.isActive()).toBe(false);expect(clips[0].size).toBeGreaterThan(0);
+ await capture.start(done,vi.fn());expect(capture.isActive()).toBe(true);capture.stop();
+ expect(done).toHaveBeenCalledTimes(2);expect(acquire).toHaveBeenCalledTimes(2);expect(second.track.stop).toHaveBeenCalled();
+});

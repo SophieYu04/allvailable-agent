@@ -23,5 +23,5 @@ export function startLiveSpeech(language: string, onText: (text: string) => void
     try { recognition.start(); } catch { stopped = true; onUnavailable(); }
   };
   try { recognition.start(); } catch { onUnavailable(); return null; }
-  return { stop() { stopped = true; recognition.onend = null; recognition.onresult = null; recognition.abort(); } };
+  return { stop() { stopped = true; recognition.onend = null; recognition.onresult = null; recognition.onerror = null; try { recognition.abort(); } catch {} } };
 }

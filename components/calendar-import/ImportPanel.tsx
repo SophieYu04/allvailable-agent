@@ -41,6 +41,7 @@ export default function ImportPanel({ onCardApplied, compact = false, onManualEn
   const dataRef=useRef<ImportData|null>(null);
   const transcriptRef=useRef('');
   const audioFallback=useRef(false);
+  const latestAudio=useRef<{blob:Blob;mime:string}|null>(null);
   const audioCaptionController=useRef<AbortController|null>(null);
   useEffect(()=>{dataRef.current=data;},[data]);
   const [captionUnavailable, setCaptionUnavailable] = useState(false);
@@ -134,8 +135,11 @@ export default function ImportPanel({ onCardApplied, compact = false, onManualEn
     if (recording && !fresh) { if (recordingQuestion === questionId) capture.current?.stop(); return; }
     if (capture.current?.isActive()) return;
     if (!webAudioAvailable) { setError(t('網頁語音尚未設定，請使用文字。', 'Web voice is not configured. Enter text instead.')); return; }
+    audioCaptionController.current?.abort();audioCaptionController.current=null;
+    ++liveGeneration.current;liveClient.current?.cancel();liveClient.current=null;
+    speech.current?.stop();speech.current=null;
     capture.current ??= createAudioCapture();
-    setAudioLevel(0); setCaptureStarting(true); setRecordingQuestion(questionId); setError(''); setLiveTranscript(''); setCaptionUnavailable(false); setRecordedClip(null); confirmOnStop.current=false;transcriptRef.current='';audioFallback.current=false;
+    setAudioLevel(0); setCaptureStarting(true); setRecordingQuestion(questionId); setError(''); setLiveTranscript(''); setCaptionUnavailable(false); setRecordedClip(null); confirmOnStop.current=false;transcriptRef.current='';audioFallback.current=false;latestAudio.current=null;
     const canLive=!questionId&&onCardApplied;
     setLiveMode(Boolean(canLive));
     const generation=++liveGeneration.current;
@@ -157,12 +161,13 @@ export default function ImportPanel({ onCardApplied, compact = false, onManualEn
         setCaptureStarting(false); setRecording(true);
         speech.current = startLiveSpeech(voiceLanguage, text=>{if(!audioFallback.current){transcriptRef.current=text;setLiveTranscript(text);}}, () => {setCaptionUnavailable(true);}, text=>{if(!audioFallback.current)liveClient.current?.offer(text);});
       } }, level=>{if(alive.current)setAudioLevel(level);},(blob,mime)=>{
+        latestAudio.current={blob,mime};
         if(!canLive||audioCaptionController.current)return;
         if(!audioFallback.current&&transcriptRef.current.trim())return;
         audioFallback.current=true;
         void captionAudio({blob,mime},generation).then(text=>{if(text)liveClient.current?.offer(text);}).catch(error=>{if(alive.current&&generation===liveGeneration.current&&!(error instanceof Error&&error.name==='AbortError'))setError(error instanceof Error?error.message:t('辨識失敗','Transcription failed'));});
       });
-    } catch { if (alive.current) { setCaptureStarting(false); setRecordingQuestion(undefined); setError(t('無法使用麥克風，請上傳圖片或手動填寫。', 'Microphone unavailable. Upload a screenshot or enter times manually.')); } }
+    } catch { if (alive.current && generation===liveGeneration.current) { liveClient.current?.cancel();liveClient.current=null;setLiveMode(false);setLiveBusy(false);mutex.current=false;setRecording(false);setCaptureStarting(false); setRecordingQuestion(undefined); setError(t('無法使用麥克風，請上傳圖片或手動填寫。', 'Microphone unavailable. Upload a screenshot or enter times manually.')); } }
   }
   async function captionAudio(clip:{blob:Blob;mime:string},generation:number):Promise<string|null> {
     const controller=new AbortController();audioCaptionController.current=controller;
@@ -176,10 +181,22 @@ export default function ImportPanel({ onCardApplied, compact = false, onManualEn
       transcriptRef.current=text;setLiveTranscript(text);return text;
     } finally {if(audioCaptionController.current===controller)audioCaptionController.current=null;}
   }
+  function retryVoice() {
+    if(busy||liveBusy)return;
+    setError('');
+    if(recordedClip){completeRecording(recordedClip);return;}
+    const clip=latestAudio.current;
+    if(recording&&audioFallback.current&&clip){
+      const generation=liveGeneration.current;setBusy(true);audioCaptionController.current?.abort();
+      void captionAudio(clip,generation).then(text=>{if(text&&generation===liveGeneration.current)liveClient.current?.offer(text);})
+        .catch(error=>{if(alive.current&&generation===liveGeneration.current&&!(error instanceof Error&&error.name==='AbortError'))setError(error instanceof Error?error.message:t('辨識失敗','Transcription failed'));})
+        .finally(()=>{if(alive.current&&generation===liveGeneration.current)setBusy(false);});
+    }else liveClient.current?.retry();
+  }
   function completeRecording(clip:{blob:Blob;mime:string;questionId?:string}) {
     if(liveClient.current&&audioFallback.current){
       const generation=liveGeneration.current;setRecordedClip(clip);setBusy(true);audioCaptionController.current?.abort();
-      void captionAudio(clip,generation).then(text=>{if(text){liveClient.current?.finish(text);setRecordedClip(null);}else setError(t('辨識失敗，輸入已保留，可重試或手動填寫。','Recognition failed. Retry or use manual entry.'));}).catch(error=>{if(alive.current&&generation===liveGeneration.current)setError(error instanceof Error?error.message:t('辨識失敗','Transcription failed'));}).finally(()=>{if(alive.current&&generation===liveGeneration.current)setBusy(false);});
+      void captionAudio(clip,generation).then(text=>{if(!alive.current||generation!==liveGeneration.current)return;const transcript=text||transcriptRef.current.trim();if(transcript){liveClient.current?.finish(transcript);setRecordedClip(null);}else setError(t('辨識失敗，輸入已保留，可重試或手動填寫。','Recognition failed. Retry or use manual entry.'));}).catch(error=>{if(alive.current&&generation===liveGeneration.current)setError(error instanceof Error?error.message:t('辨識失敗','Transcription failed'));}).finally(()=>{if(alive.current&&generation===liveGeneration.current)setBusy(false);});
     }else if(liveClient.current&&transcriptRef.current.trim()){liveClient.current.finish(transcriptRef.current);setRecordedClip(null);}
     else sendRecording(clip);
   }
@@ -352,7 +369,7 @@ export default function ImportPanel({ onCardApplied, compact = false, onManualEn
       <div className="dining-actions">{recording&&<button type="button" onClick={()=>capture.current?.stop()}>{t('停止錄音','Stop recording')}</button>}<button type="button" onClick={cancelRecording}>{t('取消','Cancel')}</button><button type="button" className="dining-primary" disabled={captureStarting||busy} onClick={confirmRecording}>{liveMode?t('完成錄音','Finish recording'):t('確認並產生卡片','Confirm recording')}</button></div>
     </section>}
     {liveBusy&&<p role="status">{t('正在把文字整理成卡片…','Turning your words into cards…')}</p>}
-    {error&&liveMode&&<button type="button" disabled={liveBusy||busy} onClick={()=>liveClient.current?.retry()}>{t('重試即時處理','Retry live processing')}</button>}
+    {error&&liveMode&&<button type="button" disabled={liveBusy||busy} onClick={retryVoice}>{t('重試即時處理','Retry live processing')}</button>}
     {busy && <div className="dining-actions"><p role="status">{t('正在處理…', 'Processing…')}</p>{uploading && <button type="button" onClick={cancelUpload}>{t('取消', 'Cancel')}</button>}</div>}
     {error && <div role="alert" className="dining-message">{error}{canRetry && <button disabled={interactionLocked} onClick={() => upload()}>{t('重試上傳', 'Retry upload')}</button>}</div>}
     {data && <>{!liveMode&&data.extraction.transcript && <details className="voice-transcript"><summary>{t('語音逐字稿', 'Transcript')}</summary><p>{data.extraction.transcript}</p></details>}<p className="dining-eyebrow">02 / {t('確認辨識', 'REVIEW')}</p>
