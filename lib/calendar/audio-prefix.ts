@@ -9,12 +9,12 @@ export function observeAudioPrefixes(stream:MediaStream,onProgress:(blob:Blob,mi
  const Constructor=typeof window==='undefined'?undefined:(window as unknown as {AudioContext?:typeof AudioContext;webkitAudioContext?:typeof AudioContext}).AudioContext??(window as unknown as {webkitAudioContext?:typeof AudioContext}).webkitAudioContext;
  if(!sharedContext&&!Constructor)return null;
  const context=sharedContext??new Constructor!(),source=context.createMediaStreamSource(stream),processor=context.createScriptProcessor(4096,1,1),silence=context.createGain();silence.gain.value=0;
- const chunks:Float32Array[]=[];let count=0,last=0,active=true;
- processor.onaudioprocess=event=>{if(!active)return;const chunk=event.inputBuffer.getChannelData(0).slice();chunks.push(chunk);count+=chunk.length;
-  if(count-last>=context.sampleRate*5){last=count;const all=new Float32Array(count);let offset=0;for(const data of chunks){all.set(data,offset);offset+=data.length;}onProgress(encodeWave(all,context.sampleRate),'audio/wav');}
+ const chunks:Float32Array[]=[];let count=0,silent=0,active=true;
+ processor.onaudioprocess=event=>{if(!active)return;const chunk=event.inputBuffer.getChannelData(0).slice();chunks.push(chunk);count+=chunk.length;const rms=Math.sqrt(chunk.reduce((sum,value)=>sum+value*value,0)/chunk.length);silent=rms<.008?silent+chunk.length:0;
+  if((count>=context.sampleRate*1.5&&silent>=context.sampleRate*.35)||count>=context.sampleRate*8){const all=new Float32Array(count);let offset=0;for(const data of chunks){all.set(data,offset);offset+=data.length;}chunks.length=0;count=0;silent=0;onProgress(encodeWave(all,context.sampleRate),'audio/wav');}
  };
  source.connect(processor);processor.connect(silence);silence.connect(context.destination);void context.resume().catch(()=>{});
- const finish=()=>{if(!count)return null;const all=new Float32Array(count);let offset=0;for(const data of chunks){all.set(data,offset);offset+=data.length;}return encodeWave(all,context.sampleRate);};
+ const finish=()=>{const all=new Float32Array(count);let offset=0;for(const data of chunks){all.set(data,offset);offset+=data.length;}return encodeWave(all,context.sampleRate);};
  const stop=()=>{active=false;processor.onaudioprocess=null;source.disconnect();processor.disconnect();silence.disconnect();chunks.length=0;if(!sharedContext)void context.close().catch(()=>{});};
  return Object.assign(stop,{finish});
 }

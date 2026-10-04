@@ -3,7 +3,7 @@ import type {ImportData,ImportTransport} from './import-transport';
 export function createLiveVoiceClient(input:{transport:ImportTransport;gatheringId?:string;getData:()=>ImportData|null;isIdle:()=>boolean;onData:(data:ImportData)=>void;onBusy:(busy:boolean)=>void;onError:(message:string)=>void;onFinished:()=>void;delayMs?:number}){
  const key=crypto.randomUUID();let stopped=false,running=false,wanted='',processed='',finishing=false,budgetExhausted=false;
  let timer:ReturnType<typeof setTimeout>|undefined;let controller:AbortController|undefined;
- const schedule=()=>{if(stopped||running)return;clearTimeout(timer);timer=setTimeout(()=>void drain(),input.delayMs??1200);};
+ const schedule=(immediate=false)=>{if(stopped||running)return;clearTimeout(timer);timer=setTimeout(()=>void drain(),immediate?0:input.delayMs??350);};
  async function drain(){
   if(stopped||running)return;if(!input.isIdle()){schedule();return;}
   const snapshot=wanted;const data=input.getData();
@@ -36,5 +36,5 @@ export function createLiveVoiceClient(input:{transport:ImportTransport;gathering
   }
   if(!stopped){stopped=true;input.onFinished();}
  }
- return {offer(text:string){if(stopped)return;wanted=text.trim().slice(0,8000);schedule();},finish(text:string){if(stopped)return;finishing=true;wanted=text.trim().slice(0,8000);schedule();},retry(){schedule();},cancel(){void input.transport(`/api/calendar-imports/requests/${key}`,{method:'DELETE'});stopped=true;clearTimeout(timer);controller?.abort();try{const previous=JSON.parse(localStorage.getItem('allvailable.cancelledUploads')??'[]');localStorage.setItem('allvailable.cancelledUploads',JSON.stringify([...previous,key].slice(-100)));}catch{}return key;}};
+ return {offer(text:string){if(stopped)return;wanted=text.trim().slice(0,8000);schedule();},finish(text:string){if(stopped)return;finishing=true;wanted=text.trim().slice(0,8000);schedule(true);},retry(){schedule();},cancel(){void input.transport(`/api/calendar-imports/requests/${key}`,{method:'DELETE'});stopped=true;clearTimeout(timer);controller?.abort();try{const previous=JSON.parse(localStorage.getItem('allvailable.cancelledUploads')??'[]');localStorage.setItem('allvailable.cancelledUploads',JSON.stringify([...previous,key].slice(-100)));}catch{}return key;}};
 }

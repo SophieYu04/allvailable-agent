@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ImagePlus, Mic, Clock3 } from 'lucide-react';
 import { browserImportTransport, type ImportTransport, type ImportData, type ImportPreview as Preview } from '@/lib/calendar/import-transport';
+import {prepareImage} from '@/lib/calendar/prepare-image';
 import {readCalendarGeometry} from '@/lib/calendar/image-geometry';
 import {createLiveVoiceClient} from '@/lib/calendar/live-voice-client';
 import SwipeReviewCard from './SwipeReviewCard';
@@ -17,7 +18,7 @@ export default function ImportPanel({ onCardApplied, compact = false, onManualEn
   const { t, language } = useLanguage();
   const [data, setData] = useState<ImportData | null>(null);
   type Method = 'screenshot' | 'voice' | 'manual';
-  type SavedInput = { data: ImportData|null; clip: {blob:Blob;mime:string;questionId?:string}|null; transcript:string; pending:{form:FormData;key:string}|null; answers:Record<string,string> };
+  type SavedInput = { data: ImportData|null; clip: {blob:Blob;mime:string;questionId?:string}|null; transcript:string; pending:{form:FormData;key:string}|null; answers:Record<string,string>;images?:FormData[] };
   const [switchTo,setSwitchTo]=useState<Method|null>(null);
   const [savedInputs,setSavedInputs]=useState<SavedInput[]>([]);
   const fileInput=useRef<HTMLInputElement|null>(null);
@@ -42,7 +43,6 @@ export default function ImportPanel({ onCardApplied, compact = false, onManualEn
   const dataRef=useRef<ImportData|null>(null);
   const transcriptRef=useRef('');
   const audioFallback=useRef(false);
-  const latestAudio=useRef<{blob:Blob;mime:string}|null>(null);
   const audioCaptionController=useRef<AbortController|null>(null);
   useEffect(()=>{dataRef.current=data;},[data]);
   const speech = useRef<ReturnType<typeof startLiveSpeech>>(null);
@@ -51,6 +51,9 @@ export default function ImportPanel({ onCardApplied, compact = false, onManualEn
   const [editingCard, setEditingCard] = useState(false);
   const [cardFields,setCardFields] = useState({title:'',date:'',endDate:'',startTime:'',endTime:'',sourceTimezone:'Asia/Taipei',intent:'available',allDay:false});
   const [webAudioAvailable, setWebAudioAvailable] = useState<boolean | null>(null);
+  const imageQueue=useRef<FormData[]>([]);
+  const audioQueue=useRef<Promise<void>>(Promise.resolve());
+  const failedAudio=useRef<Array<{blob:Blob;mime:string}>>([]);
   const pending = useRef<{ form: FormData; key: string } | null>(null);
   const capture = useRef<ReturnType<typeof createAudioCapture> | null>(null);
   const [captureStarting, setCaptureStarting] = useState(false);
@@ -95,31 +98,33 @@ export default function ImportPanel({ onCardApplied, compact = false, onManualEn
     const operation = ++operationEpoch.current;
     mutex.current = true; setBusy(true); setError('');
     try { await action(); } catch (e) { if (alive.current && operation === operationEpoch.current) setError(e instanceof Error ? e.message : t('操作失敗', 'Request failed')); }
-    finally { if (operation === operationEpoch.current) { mutex.current = false; if (alive.current) setBusy(false); } }
+    finally { if (operation === operationEpoch.current) { mutex.current = false; if (alive.current) setBusy(false);if(alive.current&&!dataRef.current&&!pending.current&&imageQueue.current.length){const next=imageQueue.current.shift();if(next)setTimeout(()=>void upload(next),0);} } }
   }
   async function upload(form?: FormData) {
+    if(form){const images=form.getAll('images');if(images.length>1){if(images.length>5){setError(t('一次最多上傳 5 張圖片','Upload up to 5 screenshots.'));return;}imageQueue.current=images.slice(1).map(image=>{const next=new FormData();next.set('images',image);return next;});form.delete('images');form.set('images',images[0]);}}
     if (mutex.current || capture.current?.isActive()) return;
     if (form) { if (gatheringId) form.set('gatheringId', gatheringId); pending.current = { form, key: crypto.randomUUID() }; setCanRetry(true); }
     const item = pending.current; if (!item) return;
     const controller = new AbortController();
     uploadController.current = controller; setUploading(true);
     await run(async () => {
-      const files=item.form.getAll('images').filter((value):value is File=>value instanceof File);
+      let files=item.form.getAll('images').filter((value):value is File=>value instanceof File);
+      if(files.length&&!item.form.has('imageGeometry')){files=await Promise.all(files.map(prepareImage));item.form.delete('images');files.forEach(file=>item.form.append('images',file));}
       if(files.length&&!item.form.has('imageGeometry'))item.form.set('imageGeometry',JSON.stringify(await Promise.all(files.map(readCalendarGeometry))));
       if(controller.signal.aborted)return;
       const r = await transport('/api/calendar-imports', { method: 'POST', headers: { 'Idempotency-Key': item.key }, body: item.form, signal: controller.signal });
       const body = await r.json() as ImportData & {error?:{message?:string}};
       if (!r.ok) throw new Error(body.error?.message ?? t('上傳失敗，檔案已保留', 'Upload failed. Your files are retained.'));
       if (!alive.current || controller.signal.aborted) return;
-      if(!body.extraction.events.length){void transport(`/api/calendar-imports/${body.importId}`,{method:'DELETE'});pending.current=null;setCanRetry(false);setData(null);return;}
-      setData(body); setPreview(null); setSelected([]); setAnswers({}); pending.current = null; setCanRetry(false);
+      if(!body.extraction.events.length){void transport(`/api/calendar-imports/${body.importId}`,{method:'DELETE'});pending.current=null;setCanRetry(false);dataRef.current=null;setData(null);return;}
+      dataRef.current=body;setData(body); setPreview(null); setSelected([]); setAnswers({}); pending.current = null; setCanRetry(false);
       const first = body.extraction.visibleRanges?.[0];
       if (!dateStart && first) setRange({ startDate: first.startDate, endDate: first.endDate });
     });
     if (uploadController.current === controller) { uploadController.current = null; if (alive.current) {setUploading(false);setVoiceFinishing(false);} }
   }
   function cancelUpload() {
-    ++operationEpoch.current;
+    imageQueue.current=[];++operationEpoch.current;
     uploadController.current?.abort(); uploadController.current = null;
     mutex.current = false; setUploading(false); setBusy(false); setError('');
     if (pending.current) {
@@ -139,7 +144,7 @@ export default function ImportPanel({ onCardApplied, compact = false, onManualEn
     ++liveGeneration.current;liveClient.current?.cancel();liveClient.current=null;
     speech.current?.stop();speech.current=null;
     capture.current ??= createAudioCapture();
-    setVoiceFinishing(false);setAudioLevel(0); setCaptureStarting(true); setRecordingQuestion(questionId); setError(''); setLiveTranscript(''); setRecordedClip(null); confirmOnStop.current=false;transcriptRef.current='';audioFallback.current=false;latestAudio.current=null;
+    audioQueue.current=Promise.resolve();failedAudio.current=[];setVoiceFinishing(false);setAudioLevel(0); setCaptureStarting(true); setRecordingQuestion(questionId); setError(''); setLiveTranscript(''); setRecordedClip(null); confirmOnStop.current=false;transcriptRef.current='';audioFallback.current=false;
     const canLive=!questionId&&onCardApplied;
     setLiveMode(Boolean(canLive));
     const generation=++liveGeneration.current;
@@ -161,15 +166,17 @@ export default function ImportPanel({ onCardApplied, compact = false, onManualEn
         setCaptureStarting(false); setRecording(true);
         speech.current = canLive?null:startLiveSpeech(voiceLanguage, text=>{if(!audioFallback.current){transcriptRef.current=text;setLiveTranscript(text);}}, () => {}, text=>{if(!audioFallback.current)liveClient.current?.offer(text);});
       } }, level=>{if(alive.current)setAudioLevel(level);},(blob,mime)=>{
-        latestAudio.current={blob,mime};
-        if(!canLive||audioCaptionController.current)return;
-        if(!audioFallback.current&&transcriptRef.current.trim())return;
+        if(!canLive)return;
         audioFallback.current=true;
-        void captionAudio({blob,mime},generation).then(text=>{if(text)liveClient.current?.offer(text);}).catch(error=>{if(alive.current&&generation===liveGeneration.current&&!(error instanceof Error&&error.name==='AbortError'))setError(error instanceof Error?error.message:t('辨識失敗','Transcription failed'));});
+        audioQueue.current=audioQueue.current.then(async()=>{
+          if(!alive.current||generation!==liveGeneration.current)return;
+          if(failedAudio.current.length){failedAudio.current.push({blob,mime});return;}
+          try{const text=await captionAudio({blob,mime},generation,true);if(text)liveClient.current?.offer(text);}catch(error){failedAudio.current.push({blob,mime});throw error;}
+        }).catch(error=>{if(alive.current&&generation===liveGeneration.current&&!(error instanceof Error&&error.name==='AbortError'))setError(error instanceof Error?error.message:t('辨識失敗','Transcription failed'));});
       });
     } catch { if (alive.current && generation===liveGeneration.current) { liveClient.current?.cancel();liveClient.current=null;setLiveMode(false);setLiveBusy(false);mutex.current=false;setRecording(false);setCaptureStarting(false); setRecordingQuestion(undefined); setError(t('無法使用麥克風，請上傳圖片或手動填寫。', 'Microphone unavailable. Upload a screenshot or enter times manually.')); } }
   }
-  async function captionAudio(clip:{blob:Blob;mime:string},generation:number):Promise<string|null> {
+  async function captionAudio(clip:{blob:Blob;mime:string},generation:number,append=false):Promise<string|null> {
     const controller=new AbortController();audioCaptionController.current=controller;
     const form=new FormData();form.set('audio',clip.blob,clip.mime.includes('wav')?'voice.wav':clip.mime.includes('mp4')?'voice.m4a':'voice.webm');
     try {
@@ -178,26 +185,22 @@ export default function ImportPanel({ onCardApplied, compact = false, onManualEn
       if(controller.signal.aborted||!alive.current||generation!==liveGeneration.current)return null;
       if(!response.ok){if(result.error?.code==='AUDIO_NO_SPEECH')return null;throw new Error(result.error?.message??t('辨識失敗，錄音仍保留','Transcription failed. Recording retained.'));}
       const text=result.transcript?.trim();if(!text)return null;
-      transcriptRef.current=text;setLiveTranscript(text);return text;
+      const transcript=append?[transcriptRef.current,text].filter(Boolean).join(' '):text;transcriptRef.current=transcript;setLiveTranscript(transcript);return transcript;
     } finally {if(audioCaptionController.current===controller)audioCaptionController.current=null;}
   }
   function retryVoice() {
     if(busy||liveBusy)return;
     setError('');
     if(recordedClip){completeRecording(recordedClip);return;}
-    const clip=latestAudio.current;
-    if(recording&&audioFallback.current&&clip){
-      const generation=liveGeneration.current;setBusy(true);audioCaptionController.current?.abort();
-      void captionAudio(clip,generation).then(text=>{if(text&&generation===liveGeneration.current)liveClient.current?.offer(text);})
-        .catch(error=>{if(alive.current&&generation===liveGeneration.current&&!(error instanceof Error&&error.name==='AbortError'))setError(error instanceof Error?error.message:t('辨識失敗','Transcription failed'));})
-        .finally(()=>{if(alive.current&&generation===liveGeneration.current)setBusy(false);});
-    }else liveClient.current?.retry();
+    if(recording&&failedAudio.current.length){const generation=liveGeneration.current;setBusy(true);void audioQueue.current.then(()=>retryPendingAudio(generation)).then(()=>liveClient.current?.offer(transcriptRef.current)).catch(error=>{if(alive.current&&generation===liveGeneration.current)setError(error instanceof Error?error.message:'Transcription failed');}).finally(()=>{if(alive.current&&generation===liveGeneration.current)setBusy(false);});return;}
+    liveClient.current?.retry();
   }
+  async function retryPendingAudio(generation:number){while(failedAudio.current.length&&alive.current&&generation===liveGeneration.current){await captionAudio(failedAudio.current[0],generation,true);if(generation!==liveGeneration.current)return;failedAudio.current.shift();}}
   function completeRecording(clip:{blob:Blob;mime:string;questionId?:string}) {
     setVoiceFinishing(true);
-    if(liveClient.current&&audioFallback.current){
-      const generation=liveGeneration.current;setRecordedClip(clip);setBusy(true);audioCaptionController.current?.abort();
-      void captionAudio(clip,generation).then(text=>{if(!alive.current||generation!==liveGeneration.current)return;const transcript=text||transcriptRef.current.trim();if(transcript){liveClient.current?.finish(transcript);setRecordedClip(null);}else {setVoiceFinishing(false);setError(t('辨識失敗，輸入已保留，可重試或手動填寫。','Recognition failed. Retry or use manual entry.'));}}).catch(error=>{if(alive.current&&generation===liveGeneration.current){setVoiceFinishing(false);setError(error instanceof Error?error.message:t('辨識失敗','Transcription failed'));}}).finally(()=>{if(alive.current&&generation===liveGeneration.current)setBusy(false);});
+    if(liveClient.current&&(audioFallback.current||clip.mime==='audio/wav')){
+      const generation=liveGeneration.current;setRecordedClip(clip);setBusy(true);
+      void audioQueue.current.then(async()=>{if(!alive.current||generation!==liveGeneration.current)return null;await retryPendingAudio(generation);return clip.mime==='audio/wav'&&clip.blob.size===44?transcriptRef.current:captionAudio(clip,generation,true);}).then(text=>{if(!alive.current||generation!==liveGeneration.current)return;const transcript=text||transcriptRef.current.trim();if(transcript){liveClient.current?.finish(transcript);setRecordedClip(null);}else {setVoiceFinishing(false);setError(t('辨識失敗，輸入已保留，可重試或手動填寫。','Recognition failed. Retry or use manual entry.'));}}).catch(error=>{if(alive.current&&generation===liveGeneration.current){setVoiceFinishing(false);setError(error instanceof Error?error.message:t('辨識失敗','Transcription failed'));}}).finally(()=>{if(alive.current&&generation===liveGeneration.current)setBusy(false);});
     }else if(liveClient.current&&transcriptRef.current.trim()){liveClient.current.finish(transcriptRef.current);setRecordedClip(null);}
     else sendRecording(clip);
   }
@@ -239,9 +242,9 @@ export default function ImportPanel({ onCardApplied, compact = false, onManualEn
     const method=switchTo;
     const proceed=(clip=recordedClip)=>{
       const current=dataRef.current;
-      if(keep)setSavedInputs(old=>[...old,{data:current,clip,transcript:transcriptRef.current,pending:pending.current,answers}]);
+      if(keep)setSavedInputs(old=>[...old,{data:current,clip,transcript:transcriptRef.current,pending:pending.current,answers,images:[...imageQueue.current]}]);
       else if(current)void transport(`/api/calendar-imports/${current.importId}`,{method:'DELETE'});
-      if(uploading)cancelUpload();
+      imageQueue.current=[];if(uploading)cancelUpload();
       audioCaptionController.current?.abort();audioCaptionController.current=null;++liveGeneration.current;liveClient.current?.cancel();liveClient.current=null;mutex.current=false;setLiveBusy(false);setLiveMode(false);setVoiceFinishing(false);
       speech.current?.stop();speech.current=null;
       dataRef.current=null;setData(null);setRecordedClip(null);setLiveTranscript('');transcriptRef.current='';
@@ -254,7 +257,7 @@ export default function ImportPanel({ onCardApplied, compact = false, onManualEn
   }
   function discardCards() {
     const current=dataRef.current;
-    if(!current||mutex.current)return;setVoiceFinishing(false);
+    if(!current||mutex.current)return;imageQueue.current=[];setVoiceFinishing(false);
     audioCaptionController.current?.abort();audioCaptionController.current=null;
     ++liveGeneration.current;liveClient.current?.cancel();liveClient.current=null;
     capture.current?.cancel();speech.current?.stop();speech.current=null;
@@ -268,7 +271,7 @@ export default function ImportPanel({ onCardApplied, compact = false, onManualEn
   }
   function restoreInput(index:number) {
     if(data||recordedClip||recording||busy||liveMode)return;
-    const saved=savedInputs[index];
+    const saved=savedInputs[index];imageQueue.current=saved.images??[];
     setSavedInputs(old=>old.filter((_,i)=>i!==index));dataRef.current=saved.data;setData(saved.data);
     setRecordedClip(saved.clip);setLiveTranscript(saved.transcript);transcriptRef.current=saved.transcript;
     pending.current=saved.pending;setCanRetry(Boolean(saved.pending));setAnswers(saved.answers);
@@ -313,7 +316,7 @@ export default function ImportPanel({ onCardApplied, compact = false, onManualEn
       if(onCardApplied&&changes.length){const next={...currentCells};changes.forEach(c=>{next[c.key]=c.after as Cells[string];});onCardApplied(next);}
       setData(nextData);setPreview(null);setEditingCard(false);
       if(onCardApplied&&!liveMode&&nextData.extraction.events.every(e=>e.userConfirmed)){
-        await request(`/api/calendar-imports/${data.importId}`,undefined,'DELETE');setData(null);
+        await request(`/api/calendar-imports/${data.importId}`,undefined,'DELETE');dataRef.current=null;setData(null);
       }
     });
   }
@@ -339,7 +342,7 @@ export default function ImportPanel({ onCardApplied, compact = false, onManualEn
       const body = await request<ImportData>(`/api/calendar-imports/${data.importId}`, { action: 'edit_event', version: data.version, eventId: activeEvent.id, changes: { delete: true } });
       setData({ ...data, ...body, version: String(body.version) });
       setPreview(null); setEditingCard(false);
-      if(onCardApplied && !liveMode && body.extraction.events.every(e=>e.userConfirmed)){await request(`/api/calendar-imports/${data.importId}`,undefined,'DELETE');setData(null);}
+      if(onCardApplied && !liveMode && body.extraction.events.every(e=>e.userConfirmed)){await request(`/api/calendar-imports/${data.importId}`,undefined,'DELETE');dataRef.current=null;setData(null);}
     });
   }
   function makePreview() { if (!data) return; void run(async () => {

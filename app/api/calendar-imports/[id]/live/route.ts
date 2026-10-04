@@ -3,6 +3,7 @@ import {z} from 'zod';
 import {requireUser} from '@/lib/server/auth';
 import {jsonError,nextDecimalVersion} from '@/lib/server/http';
 import {extractionSchema} from '@/lib/calendar/schemas';
+import {fastSpeech,speechDelta} from '@/lib/ai/fast-speech';
 import {analyzeImport} from '@/lib/ai/service';
 import {mergeLiveVoice,LIVE_VOICE_CALL_LIMIT,LIVE_VOICE_WINDOW_MS} from '@/lib/calendar/live-voice';
 const input=z.object({version:z.string().regex(/^\d+$/),transcript:z.string().trim().min(1).max(8000).optional(),finish:z.boolean().optional()}).strict();
@@ -43,7 +44,9 @@ export async function POST(request:Request,context:{params:Promise<{id:string}>}
   if(reserveError||!reservation)return jsonError(409,'VERSION_CONFLICT','卡片已更新',true);
   let speechContext:{timezone:string;dateStart?:string;dateEnd?:string}={timezone:'Asia/Taipei'};
   if(row.gathering_id){const {data:gathering}=await supabase.from('gatherings').select('date_start,date_end').eq('id',row.gathering_id).single();if(gathering)speechContext={timezone:'Asia/Taipei',dateStart:gathering.date_start,dateEnd:gathering.date_end};}
-  const parsed=await analyzeImport({transcript:body.data.transcript,speechContext});
+  const delta=speechDelta(current.transcript??'',body.data.transcript!);
+  const direct=fastSpeech(delta,speechContext);
+  const parsed=direct??await analyzeImport({transcript:direct?delta:(delta!==body.data.transcript&&!/(?:今天|明天|後天|每天|\d{4}|tomorrow|today|every)/i.test(delta)?body.data.transcript:delta),speechContext});
   const {data:stillActive}=await supabase.rpc('ai_request_is_active',{p_request_id:lockId});
   if(stillActive!==true)return jsonError(409,'AI_CANCELLED','Cancelled.');
   const events=parsed.events.filter(e=>e.intent!=='uncertain'&&(e.allDay===true||e.startTime&&e.endTime));const ids=new Set(events.map(e=>e.id));

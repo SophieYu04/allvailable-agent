@@ -1,0 +1,7 @@
+import {expect,it,vi,afterEach} from 'vitest';import {fastSpeech,speechDelta} from './fast-speech';import {extractCalendarText} from './openai';
+const context={timezone:'Asia/Taipei',referenceDate:'2026-10-04',dateStart:'2026-10-05',dateEnd:'2026-10-09'};
+afterEach(()=>vi.unstubAllGlobals());
+it.each(['明天晚上七點到八點忙碌','2026年10月5日19:00～20:00 busy','tomorrow 7pm to 8pm busy'])('parses an explicit window without model inference: %s',async text=>{const fetcher=vi.fn();vi.stubGlobal('fetch',fetcher);const result=await extractCalendarText(text,context);expect(result.events).toHaveLength(1);expect(result.events[0]).toMatchObject({startDate:'2026-10-05',startTime:'19:00',endTime:'20:00',intent:'busy',userConfirmed:false});expect(fetcher).not.toHaveBeenCalled();});
+it('one recurring card covers invitation dates',()=>{expect(fastSpeech('每天晚上七點到八點忙碌',context)?.events[0].recurrence).toMatchObject({frequency:'daily',until:'2026-10-09'});});
+it.each(['媒體晚上七點到八點 busy','明天晚上七點到八點忙碌，但是後天有空','明天晚上七點到八點不忙','明天晚上二十五點到八點忙碌','每天晚上七點到八點忙碌，除了星期三'])('keeps ambiguous or unsupported input on the model path: %s',text=>{expect(fastSpeech(text,context)).toBeNull();});
+it('sends only appended speech, while revisions retain the full context',()=>{expect(speechDelta('第一句。','第一句。 明天晚上七點到八點忙碌')).toBe('明天晚上七點到八點忙碌');expect(speechDelta('明天七點','後天七點')).toBe('後天七點');});

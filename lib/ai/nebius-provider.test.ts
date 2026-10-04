@@ -74,3 +74,10 @@ it('never uses the text model for a vision request when no vision model is selec
   await expect(extractCalendarImages([{id:'image',dataUrl:'data:image/png;base64,AA=='}])).rejects.toThrow('NEBIUS_VISION_NOT_CONFIGURED');
   expect(fetch).not.toHaveBeenCalled();
 });
+it('a complete high-confidence vision observation bypasses text inference',async()=>{
+ vi.stubEnv('NEBIUS_API_KEY','test');vi.stubEnv('NEBIUS_VISION_MODEL','vision-model');
+ const vision={sources:[{id:'image',kind:'calendar',layout:'agenda',confidence:.99,text:'2026-10-05 Dinner 19:00–20:00',timeAxis:[],events:[{label:'Dinner',startDate:'2026-10-05',endDate:'2026-10-05',startTime:'19:00',endTime:'20:00',allDay:false,blockIndex:null,evidence:'Printed exact range'}]}]};
+ const fetcher=vi.fn().mockResolvedValue(new Response(JSON.stringify({choices:[{message:{content:JSON.stringify(vision)}}]})));vi.stubGlobal('fetch',fetcher);
+ const {extractCalendarImages}=await import('./openai');const result=await extractCalendarImages([{id:'image',dataUrl:'data:image/png;base64,AA=='}],{timezone:'Asia/Taipei'});
+ expect(result.events[0]).toMatchObject({startTime:'19:00',endTime:'20:00',userConfirmed:false});expect(fetcher).toHaveBeenCalledOnce();expect(JSON.parse(fetcher.mock.calls[0][1].body).model).toBe('vision-model');
+});

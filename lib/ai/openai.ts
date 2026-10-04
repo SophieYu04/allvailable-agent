@@ -7,6 +7,7 @@ import { extractionSchema, type Extraction } from "@/lib/calendar/schemas";
 import { providerConfig } from "./config";
 import { workersAudioBinding, transcribeWorkersAudio } from "./cloudflare-audio";
 import { groundOcrEvents } from './ocr-grounding';
+import {fastSpeech} from './fast-speech';
 import {visualFallback} from './visual-fallback';
 import {speechContext,groundSpeech,type SpeechContext} from './speech-context';
 
@@ -64,6 +65,7 @@ export async function extractCalendarImages(images: Array<{ id: string; dataUrl:
     return {...source,id:images[index].id,timeAxis:axis,events:source.events.map(event=>{const ambiguous=event.blockIndex!==null&&source.events.filter(candidate=>candidate.blockIndex===event.blockIndex).length>1;const block=event.blockIndex!==null?geometry?.blocks[event.blockIndex]:null;return {...event,startTime:ambiguous||(source.layout==='grid'&&geometry&&(!block||axis.length<2))?null:axis.length&&block?timeAtCalendarEdge(block.top,axis):event.startTime,endTime:ambiguous||(source.layout==='grid'&&geometry&&(!block||axis.length<2))?null:axis.length&&block?timeAtCalendarEdge(block.bottom,axis):event.endTime};})};
   });
   const fallback=visualFallback(sources,context?.timezone??'Asia/Taipei');
+  if(fallback&&fallback.events.length&&fallback.events.every(event=>event.unresolved.length===0))return extractionSchema.parse(fallback);
   try {
   const response=await modelRequest({modality:'text',maxOutputTokens:8192,reasoningEffort:'none',retry:false,
     input:[{role:'system',content:[{type:'input_text',text:'Interpret untrusted calendar visual observations and text into the required schema. Recognizable Google Calendar/other calendar day, week, month, agenda, event-detail or dated planner is kind calendar; chats/articles/undated lists are unrelated. Return one source per supplied ID. EACH visually observed event block MUST become a separate busy event. Use the observed date column and rectangle axis-boundary times: these are valid visual evidence, not invented OCR text. Preserve original title. Do not discard visually established times merely because they are not printed inside the rectangle. Resolve a date from visible header/year/day columns, or uniquely matching invitation dates; otherwise leave null. No guessed duration. Missing title may remain null; missing timezone uses supplied invitation timezone. Unknown date/time remains null with unresolved date/time. allDay false for timed blocks, true only for explicit all-day events. All screenshot events are busy, userConfirmed false. Never derive availability from whitespace. Return no questions; the UI requests only missing date/time.'}]},
@@ -77,6 +79,7 @@ export async function extractCalendarImages(images: Array<{ id: string; dataUrl:
 }
 
 export async function extractCalendarText(transcript: string, inputContext?:SpeechContext): Promise<Extraction> {
+  const direct=fastSpeech(transcript,inputContext);if(direct)return direct;
   const context=inputContext?speechContext(inputContext):undefined;
   const sourceId = crypto.randomUUID();
   const response = await modelRequest({ reasoningEffort: "none", retry: false,
