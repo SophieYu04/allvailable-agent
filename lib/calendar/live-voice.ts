@@ -8,7 +8,15 @@ export function eventFingerprint(event:Extraction['events'][number]) {
 export function mergeLiveVoice(current:Extraction,incoming:Extraction,transcript:string):Extraction {
  if(!current.liveVoice)throw new Error('LIVE_SESSION_REQUIRED');
  const seen=new Set(current.liveVoice.seen);
- let events=[...current.events];let questions=[...current.questions];
+ // Every request contains the cumulative transcript. Replace pending fragments
+ // with its latest complete interpretation, while preserving reviewed decisions.
+ const incomingKeys=new Set(incoming.events.map(eventFingerprint));
+ const superseded=current.events.filter(event=>event.userConfirmed!==true&&!incomingKeys.has(eventFingerprint(event)));
+ const supersededIds=new Set(superseded.map(event=>event.id));
+ const sameInterval=(old:Extraction['events'][number],event:Extraction['events'][number])=>old.startDate===event.startDate&&old.endDate===event.endDate&&old.startTime===event.startTime&&old.endTime===event.endTime&&old.sourceTimezone===event.sourceTimezone&&old.allDay===event.allDay&&JSON.stringify(old.recurrence)===JSON.stringify(event.recurrence);
+ let events=current.events.filter(event=>!supersededIds.has(event.id)||incoming.events.some(next=>sameInterval(event,next)));
+ let questions=current.questions.filter(question=>!question.eventId||events.some(event=>event.id===question.eventId));
+ for(const event of superseded)if(!events.some(kept=>kept.id===event.id))seen.delete(eventFingerprint(event));
  for(const event of incoming.events){
   if(event.allDay&&event.intent==='available')continue;
   const key=eventFingerprint(event);

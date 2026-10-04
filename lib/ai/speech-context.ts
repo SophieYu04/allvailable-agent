@@ -46,7 +46,7 @@ export function groundSpeech(input:Extraction,text:string,context?:SpeechContext
  if(context?.referenceDate&&relative.length===1&&!/(?:\d{4}[-年/.])/.test(text)&&!daily&&!weekly){
   const token=relative[0][0].toLowerCase();const offset=/後天|后天|day after tomorrow/.test(token)?2:/明天|tomorrow/.test(token)?1:0;
   const date=new Date(Date.parse(context.referenceDate)+offset*86400000).toISOString().slice(0,10);
-  events=events.map(event=>({...event,startDate:date,endDate:/(?:隔天|翌日|next day)/i.test(text)?new Date(Date.parse(date)+86400000).toISOString().slice(0,10):date,unresolved:event.unresolved.filter(field=>field!=='date')}));
+  events=(single&&clock?events.slice(0,1):events).map(event=>({...event,recurrence:null,startDate:date,endDate:/(?:隔天|翌日|next day)/i.test(text)?new Date(Date.parse(date)+86400000).toISOString().slice(0,10):date,unresolved:event.unresolved.filter(field=>field!=='date')}));
  }
  const seen=new Set<string>();
  events=events.filter(e=>{const key=JSON.stringify([e.intent,e.startDate,e.endDate,e.startTime,e.endTime,e.sourceTimezone,e.allDay,e.recurrence,e.startTime&&e.endTime?null:e.label]);if(seen.has(key))return false;seen.add(key);return true;});
