@@ -25,12 +25,15 @@ try {
   const form = new FormData();
   form.set('mode', 'live_voice');
   form.set('gatheringId', gatheringId);
-  form.set('transcript', 'I can do it every day between 4pm to 6pm.');
+  form.set('transcript', process.argv[2] ?? 'I can do it every day between 4pm to 6pm.');
   const response = await fetch(`${origin}/api/calendar-imports`, { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Idempotency-Key': randomUUID() }, body: form });
   const result = await response.json();
   if (!response.ok) throw Error(`Import HTTP ${response.status}: ${result.error?.code ?? 'unknown'}`);
   const event = result.extraction?.events?.[0];
-  if (result.extraction.events.length !== 1 || event.intent !== 'available' || event.startDate !== '2035-10-03' || event.startTime !== '16:00' || event.endTime !== '18:00' || event.recurrence?.frequency !== 'daily' || event.recurrence?.until !== '2035-10-04') throw Error('Daily availability card did not match the transcript');
+  if (result.extraction.events.length !== 1 || event.intent !== 'available' || event.startDate !== '2035-10-03' || event.startTime !== '16:00' || event.endTime !== '18:00' || event.recurrence?.frequency !== 'daily' || event.recurrence?.until !== '2035-10-04') {
+    console.error(JSON.stringify({ status: result.status, events: result.extraction.events.map(item => ({ intent: item.intent, startDate: item.startDate, endDate: item.endDate, startTime: item.startTime, endTime: item.endTime, recurrence: item.recurrence, unresolved: item.unresolved })), questions: result.extraction.questions.map(item => item.kind) }));
+    throw Error('Daily availability card did not match the transcript');
+  }
   console.log('PASS hosted transcript created one daily Available card');
   const confirm = await fetch(`${origin}/api/calendar-imports/${result.importId}`, { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'confirm_event', version: result.version, eventId: event.id }) });
   const confirmed = await confirm.json();
