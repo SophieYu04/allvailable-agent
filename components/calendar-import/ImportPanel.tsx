@@ -116,7 +116,12 @@ export default function ImportPanel({ onCardApplied, compact = false, onManualEn
       const body = await r.json() as ImportData & {error?:{message?:string}};
       if (!r.ok) throw new Error(body.error?.message ?? t('上傳失敗，檔案已保留', 'Upload failed. Your files are retained.'));
       if (!alive.current || controller.signal.aborted) return;
-      if(!body.extraction.events.length){void transport(`/api/calendar-imports/${body.importId}`,{method:'DELETE'});pending.current=null;setCanRetry(false);dataRef.current=null;setData(null);return;}
+      if(!body.extraction.events.length){
+        if(item.form.get('mode')==='live_voice'){
+          dataRef.current=body;setData(body);pending.current=null;setCanRetry(false);setError(t('沒有產生卡片，請重試。','No cards were created. Retry.'));return;
+        }
+        void transport(`/api/calendar-imports/${body.importId}`,{method:'DELETE'});pending.current=null;setCanRetry(false);dataRef.current=null;setData(null);return;
+      }
       dataRef.current=body;setData(body); setPreview(null); setSelected([]); setAnswers({}); pending.current = null; setCanRetry(false);
       const first = body.extraction.visibleRanges?.[0];
       if (!dateStart && first) setRange({ startDate: first.startDate, endDate: first.endDate });
@@ -149,10 +154,10 @@ export default function ImportPanel({ onCardApplied, compact = false, onManualEn
     setLiveMode(Boolean(canLive));
     const generation=++liveGeneration.current;
     if(canLive)liveClient.current=createLiveVoiceClient({transport,gatheringId,getData:()=>dataRef.current,isIdle:()=>!mutex.current,
-      onData:next=>{if(alive.current&&generation===liveGeneration.current){dataRef.current=next;setData(next);}},
+      onData:next=>{if(alive.current&&generation===liveGeneration.current){dataRef.current=next;setData(next);if(next.extraction.events.length)setError('');}},
       onBusy:active=>{if(generation!==liveGeneration.current)return;mutex.current=active;if(alive.current)setLiveBusy(active);},
       onError:message=>{if(alive.current&&generation===liveGeneration.current){setVoiceFinishing(false);setError(message==='Retry live processing'?t('重試','Retry'):message);}},
-      onFinished:()=>{if(alive.current&&generation===liveGeneration.current){setVoiceFinishing(false);setLiveMode(false);setRecordedClip(null);const current=dataRef.current;if(current&&current.extraction.events.every(e=>e.userConfirmed)){void transport(`/api/calendar-imports/${current.importId}`,{method:'DELETE'});dataRef.current=null;setData(null);}}}
+      onFinished:()=>{if(alive.current&&generation===liveGeneration.current){setVoiceFinishing(false);setLiveMode(false);setRecordedClip(null);liveClient.current=null;const current=dataRef.current;if(!current?.extraction.events.length)setError(t('沒有產生卡片，請重試。','No cards were created. Retry.'));else if(current.extraction.events.every(e=>e.userConfirmed)){void transport(`/api/calendar-imports/${current.importId}`,{method:'DELETE'});dataRef.current=null;setData(null);}}}
     });
     try {
       await capture.current.start((blob, mime) => {
@@ -195,12 +200,20 @@ export default function ImportPanel({ onCardApplied, compact = false, onManualEn
     if(recording&&failedAudio.current.length){const generation=liveGeneration.current;setBusy(true);void audioQueue.current.then(()=>retryPendingAudio(generation)).then(()=>liveClient.current?.offer(transcriptRef.current)).catch(error=>{if(alive.current&&generation===liveGeneration.current)setError(error instanceof Error?error.message:'Transcription failed');}).finally(()=>{if(alive.current&&generation===liveGeneration.current)setBusy(false);});return;}
     liveClient.current?.retry();
   }
+  async function retryTranscript(){
+    if(busy||liveBusy||!transcriptRef.current.trim())return;
+    const current=dataRef.current;
+    if(current?.extraction.events.length===0){dataRef.current=null;setData(null);void transport(`/api/calendar-imports/${current.importId}`,{method:'DELETE'});}
+    setError('');
+    const form=new FormData();form.set('mode','live_voice');form.set('transcript',transcriptRef.current.trim());
+    await upload(form);
+  }
   async function retryPendingAudio(generation:number){while(failedAudio.current.length&&alive.current&&generation===liveGeneration.current){await captionAudio(failedAudio.current[0],generation,true);if(generation!==liveGeneration.current)return;failedAudio.current.shift();}}
   function completeRecording(clip:{blob:Blob;mime:string;questionId?:string}) {
     setVoiceFinishing(true);
     if(liveClient.current&&(audioFallback.current||clip.mime==='audio/wav')){
       const generation=liveGeneration.current;setRecordedClip(clip);setBusy(true);
-      void audioQueue.current.then(async()=>{if(!alive.current||generation!==liveGeneration.current)return null;await retryPendingAudio(generation);return clip.mime==='audio/wav'&&clip.blob.size===44?transcriptRef.current:captionAudio(clip,generation,true);}).then(text=>{if(!alive.current||generation!==liveGeneration.current)return;const transcript=text||transcriptRef.current.trim();if(transcript){liveClient.current?.finish(transcript);setRecordedClip(null);}else {setVoiceFinishing(false);setError(t('辨識失敗，輸入已保留，可重試或手動填寫。','Recognition failed. Retry or use manual entry.'));}}).catch(error=>{if(alive.current&&generation===liveGeneration.current){setVoiceFinishing(false);setError(error instanceof Error?error.message:t('辨識失敗','Transcription failed'));}}).finally(()=>{if(alive.current&&generation===liveGeneration.current)setBusy(false);});
+      void audioQueue.current.then(async()=>{if(!alive.current||generation!==liveGeneration.current)return null;await retryPendingAudio(generation);return clip.mime==='audio/wav'&&clip.blob.size===44?transcriptRef.current:captionAudio(clip,generation,false);}).then(text=>{if(!alive.current||generation!==liveGeneration.current)return;const transcript=text||transcriptRef.current.trim();if(transcript){liveClient.current?.finish(transcript);setRecordedClip(null);}else {setVoiceFinishing(false);setError(t('辨識失敗，輸入已保留，可重試或手動填寫。','Recognition failed. Retry or use manual entry.'));}}).catch(error=>{if(alive.current&&generation===liveGeneration.current){setVoiceFinishing(false);setError(error instanceof Error?error.message:t('辨識失敗','Transcription failed'));}}).finally(()=>{if(alive.current&&generation===liveGeneration.current)setBusy(false);});
     }else if(liveClient.current&&transcriptRef.current.trim()){liveClient.current.finish(transcriptRef.current);setRecordedClip(null);}
     else sendRecording(clip);
   }
@@ -375,6 +388,7 @@ export default function ImportPanel({ onCardApplied, compact = false, onManualEn
     </section>}
     {liveBusy&&!voiceFinishing&&<p role="status">{t('處理中','Processing')}</p>}
     {error&&liveMode&&<button type="button" disabled={liveBusy||busy} onClick={retryVoice}>{t('重試','Retry')}</button>}
+    {error&&!liveMode&&Boolean(liveTranscript)&&!data?.extraction.events.length&&<button type="button" disabled={liveBusy||busy} onClick={()=>void retryTranscript()}>{t('重試','Retry')}</button>}
     {busy&&!voiceFinishing && <div className="dining-actions"><p role="status">{t('處理中', 'Processing')}</p>{uploading && <button type="button" onClick={cancelUpload}>{t('取消', 'Cancel')}</button>}</div>}
     {error && <div role="alert" className="dining-message">{error}{canRetry && <button disabled={interactionLocked} onClick={() => upload()}>{t('重試上傳', 'Retry upload')}</button>}</div>}
     {data && <>{!liveMode&&data.extraction.transcript && <details className="voice-transcript"><summary>{t('語音逐字稿', 'Transcript')}</summary><p>{data.extraction.transcript}</p></details>}<p className="dining-eyebrow">02 / {t('確認辨識', 'REVIEW')}</p>

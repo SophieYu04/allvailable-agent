@@ -7,8 +7,8 @@ export function speechContext(input:SpeechContext={timezone:'Asia/Taipei'}):Spee
 /** Explicit single-intent speech cannot be downgraded by model annotation noise. */
 export function groundSpeech(input:Extraction,text:string,context?:SpeechContext):Extraction {
  const semantic=text.replace(/(?:\bnot busy\b|不忙)/ig,' available ');
- const busy=/(?:\bbusy\b|沒空|没空|不能參加|不能参加|沒辦法|有事|不行|忙碌|不得閒|unavailable|cannot attend|can't attend|not available|not free)/i.test(semantic);
- const free=/(?:\bavailable\b|\bfree\b|有空|可以參加|可以参加|能參加|能参加)/i.test(semantic.replace(/(?:unavailable|not available|not free|不能參加|不能参加|不能參與|不能参与)/ig,''));
+ const busy=/(?:\bbusy\b|沒空|没空|不能參加|不能参加|沒辦法|有事|不行|忙碌|不得閒|unavailable|cannot attend|can't attend|can't do it|cannot do it|not available|not free)/i.test(semantic);
+ const free=/(?:\bavailable\b|\bfree\b|\bcan do it\b|有空|可以參加|可以参加|能參加|能参加)/i.test(semantic.replace(/(?:unavailable|not available|not free|can't do it|cannot do it|不能參加|不能参加|不能參與|不能参与)/ig,''));
  const tentative=/(?:tentative|可能|暫定|暂定|不確定|不确定|maybe)/i.test(text);
  const assertedActivity=/(?:開會|开会|有會議|有会议|上課|上课|看醫生|看医生|\bmeeting\b|\bappointment\b|\bclass\b)/i.test(text);
  const single=[busy,free,tentative].filter(Boolean).length===1;
@@ -17,6 +17,7 @@ export function groundSpeech(input:Extraction,text:string,context?:SpeechContext
  const allDaySpoken=/(?:全天|整天|all day|whole day)/i.test(text);
  events=events.map(event=>event.allDay&&!allDaySpoken?{...event,allDay:false,unresolved:event.startTime&&event.endTime?event.unresolved:event.unresolved.filter(f=>f!=='time').concat('time')}:event);
  const daily=/(?:每天|每日|每晚|every day|daily|every evening)/i.test(text);
+ const hasException=/(?:除了|除外|except|excluding|not on)/i.test(text);
  const weekdays=spokenWeekdays(text);
  const weekly=weekdays.length>0&&/(?:每(?:個|个)?[週周]|every\s+(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday))/i.test(text);
  const clock=spokenRange(text);
@@ -31,7 +32,7 @@ export function groundSpeech(input:Extraction,text:string,context?:SpeechContext
   const candidates=events.length?events.slice(0,1):[{id:crypto.randomUUID(),sourceIds:input.sources.map(source=>source.id),label:null,intent:intent as 'busy'|'available'|'tentative',startDate:date,endDate,startTime:clock.start,endTime:clock.end,allDay:false,recurrence:null,sourceTimezone:context?.timezone??null,unresolved:date?[]:['date'],userConfirmed:false}];
   events=exact.length?exact:candidates.map(event=>({...event,startTime:clock.start,endTime:clock.end,allDay:false,unresolved:event.unresolved.filter(field=>field!=='time')}));
  }
- if((daily||weekly)&&single&&clock){
+ if((daily||weekly)&&single&&clock&&!hasException){
   const start=context?.dateStart??null;
   const end=start&&clock.end<=clock.start?new Date(Date.parse(start)+86400000).toISOString().slice(0,10):start;
   events=[{id:input.events[0]?.id??crypto.randomUUID(),sourceIds:input.sources.map(s=>s.id),label:null,intent:intent as 'busy'|'available'|'tentative',startDate:start,endDate:end,startTime:clock.start,endTime:clock.end,sourceTimezone:context?.timezone??input.events[0]?.sourceTimezone??null,allDay:false,recurrence:{frequency:weekly?'weekly':'daily',interval:1,weekdays:weekly?weekdays:[],until:context?.dateEnd??null},unresolved:start?[]:['date'],userConfirmed:false}];
