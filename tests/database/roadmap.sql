@@ -52,7 +52,7 @@ select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000003'
 do $$ begin if exists(select 1 from public.gatherings) then raise exception 'nonmember access'; end if; end $$;
 reset role;
 select revision as current_revision from public.gatherings where id=(:'created'::jsonb->>'id')::uuid \gset
-select public.commit_gathering_snapshot((:'created'::jsonb->>'id')::uuid,:'current_revision','{}','[{"id":"candidate","startsAt":"2030-01-05T10:00:00Z","endsAt":"2030-01-05T11:00:00Z","participantScores":[]}]',array['00000000-0000-4000-8000-000000000001'::uuid,'00000000-0000-4000-8000-000000000002'::uuid]) as snapshot \gset
+select public.commit_gathering_snapshot((:'created'::jsonb->>'id')::uuid,:'current_revision','{}','[{"id":"candidate","startsAt":"2030-01-05T10:00:00Z","endsAt":"2030-01-05T11:00:00Z","participantScores":[{"participantId":"00000000-0000-4000-8000-000000000001","status":"green","submitted":true}]}]',array['00000000-0000-4000-8000-000000000001'::uuid,'00000000-0000-4000-8000-000000000002'::uuid]) as snapshot \gset
 set local role authenticated;
 select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000001',true);
 select public.finalize_gathering((:'created'::jsonb->>'id')::uuid,(:'snapshot'::jsonb->>'id')::uuid,'candidate',:'current_revision');

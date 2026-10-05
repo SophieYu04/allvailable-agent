@@ -51,7 +51,7 @@ export default function GatheringManager({ gathering:g, reload, onLeave, host, e
         <label className="dining-wide">{t('截止（台灣時間）','Reply deadline · Taipei')}<input name="deadline" type="datetime-local" required defaultValue={taipeiLocal}/></label>
         <label className="check-label"><input name="participates" type="checkbox" defaultChecked={g.host_participates!==false}/>{t('我也參加','I am participating')}</label>
         <label className="check-label"><input name="public" type="checkbox" defaultChecked={g.conditions_public}/>{t('公開推薦條件','Share ranking criteria')}</label>
-        <fieldset className="dining-wide"><legend>{t('優先出席者','Priority guests')}</legend>{g.memberships?.filter(m=>m.status==='joined').map(m=><label className="check-label" key={m.user_id}><input type="checkbox" name="priority" value={m.user_id} defaultChecked={m.is_priority}/>{m.display_name}</label>)}</fieldset>
+        <fieldset className="dining-wide"><legend>{t('必須出席','Required attendance')}</legend>{g.memberships?.filter(m=>m.status==='joined').map(m=><label className="check-label" key={m.user_id}><input type="checkbox" name="priority" value={m.user_id} defaultChecked={m.is_priority}/>{m.display_name}</label>)}</fieldset>
         <p className="dining-wide dining-note">{t('更改日期、時段或長度後，成員需重新提交。','Changing dates, hours or duration requires new submissions.')}</p>
         <button type="submit" className="dining-primary">{t('儲存設定','Save settings')}</button>
       </fieldset></form>}

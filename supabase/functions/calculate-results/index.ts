@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { scoreCandidates } from "../_shared/scoring.ts";
+import { requiredAttendeesAvailable } from "../_shared/required-attendance.ts";
 
 const corsHeaders = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type" };
 
@@ -41,7 +42,10 @@ Deno.serve(async (request) => {
   });
   const cellsByCandidate = Object.fromEntries(candidates.map((candidate) => [candidate.id, candidateCells(candidate)]));
   const recommendationCount = Math.min(3, Math.max(1, Number(gathering.recommendation_count) || 3));
-  const ranked = scoreCandidates(candidates, submissionsForScoring, cellsByCandidate);
+  const requiredIds = new Set(activeMembers.filter((member) => member.is_priority).map((member) => member.user_id));
+  const ranked = scoreCandidates(candidates, submissionsForScoring, cellsByCandidate).filter((candidate) =>
+    requiredAttendeesAvailable(candidate.participantScores, requiredIds)
+  );
   const manualIds = new Set(manual.map((c: {id:string}) => c.id));
   const included = [...ranked.filter(c => manualIds.has(c.id)), ...ranked.filter(c => !manualIds.has(c.id))].slice(0,recommendationCount);
   const scored = ranked.filter(c => included.some(i => i.id === c.id));

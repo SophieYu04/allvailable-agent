@@ -1,16 +1,16 @@
 # Allvailable
 
-**Find a time together. Keep your calendar private.**
+**AI scheduling from screenshots and voice.**
 
-Allvailable is a scheduling agent for groups. Describe a plan, review your availability, and find a time everyone can make—without sharing private event titles or calendar screenshots with friends.
+Allvailable helps groups choose a meeting time from real availability. Its AI reads calendar screenshots and voice replies, then turns them into time slots for each person to review. Event details and raw imports are not shared with the group.
 
 [Open app](https://sophieyu04.github.io/allvailable-agent/) · [Setup guide](docs/hackathon/README.md) · [Verified deployment](docs/hackathon/deployment-20261001.md)
 
 ## How it works
 
-1. **Plan:** describe a gathering in English or Chinese. Review the AI-generated invitation and share its link or six-digit code.
-2. **Review:** choose times, upload a calendar screenshot, or record your availability. Review Busy/Skip cards; supply dates or times only when unreadable.
-3. **Meet:** submit availability and compare shared time slots. Unknown or unsubmitted time never counts as free.
+1. **Invite:** describe a gathering, set the date range, and share its link or six-digit code.
+2. **Import:** upload a calendar screenshot, record a voice reply, or enter time ranges directly. Review AI-extracted cards before they change your availability.
+3. **Decide:** compare suggested times scored across available and tentative replies. Mark people as **required** when they must attend; they must be explicitly available throughout the final time slot. Unknown or unsubmitted time never counts as available.
 
 ## Built with
 
@@ -21,7 +21,7 @@ Allvailable is a scheduling agent for groups. Describe a plan, review your avail
 | Auth & data | Supabase Auth and Postgres with row-level security |
 | AI | NVIDIA Nemotron Super on Nebius Token Factory; Gemma 3 for visual calendar understanding |
 
-The models interpret plans, screenshots, and voice availability. Supported browsers show live speech captions and send finalized phrases to NVIDIA Nemotron for review cards during recording. Cloudflare Whisper supplies live transcription from microphone WAV prefixes when browser captions are unavailable, and verifies the completed recording. Deterministic code computes the overlap; users approve changes before submission. Model credentials stay on the server.
+The models interpret plans, screenshots, and voice replies. Deterministic code scores time slots; users approve imported availability before submission. Model credentials stay on the server.
 
 ## Run locally
 

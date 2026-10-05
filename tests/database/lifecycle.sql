@@ -61,6 +61,20 @@ do $$ declare g jsonb; begin
  if g->'result_snapshots'->0->'criteria'<>'{}'::jsonb or (g->'result_snapshots'->0->'candidates'->0) ? 'priorityScore' then raise exception 'snapshot criteria leak'; end if;
 end $$;
 select set_config('request.jwt.claim.sub','20000000-0000-4000-8000-000000000001',true);
+reset role;
+update public.memberships set is_priority=true where gathering_id=current_setting('test.id')::uuid and user_id='20000000-0000-4000-8000-000000000001'::uuid;
+set local role authenticated;
+do $$ begin
+  begin
+    perform public.finalize_gathering(current_setting('test.id')::uuid,current_setting('test.snapshot')::uuid,'candidate-1',current_setting('test.revision')::bigint);
+    raise exception 'required guest without available result was finalized';
+  exception when others then
+    if sqlerrm <> 'REQUIRED_ATTENDEE_UNAVAILABLE' then raise; end if;
+  end;
+end $$;
+reset role;
+update public.memberships set is_priority=false where gathering_id=current_setting('test.id')::uuid and user_id='20000000-0000-4000-8000-000000000001'::uuid;
+set local role authenticated;
 select public.finalize_gathering(current_setting('test.id')::uuid,current_setting('test.snapshot')::uuid,'candidate-1',current_setting('test.revision')::bigint);
 select public.finalize_gathering(current_setting('test.id')::uuid,current_setting('test.snapshot')::uuid,'candidate-1',current_setting('test.revision')::bigint);
 do $$ declare g jsonb; begin
