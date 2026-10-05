@@ -33,10 +33,8 @@ export default function PlanAssistant({ onDraft, disabled, onBusyChange }: { onB
   }
   return <section className="plan-assistant" aria-labelledby="plan-assistant-heading">
     <h3 id="plan-assistant-heading">{t('說說你的計畫', 'Describe your plan')}</h3>
-    <label htmlFor="plan-description" className="dining-note">{t('日期、時段、活動長度，以及希望大家何時回覆。', 'Include dates, a time window, duration, and a reply deadline.')}</label>
-    <textarea id="plan-description" rows={4} maxLength={6000} value={text} disabled={busy || disabled} onChange={e => setText(e.target.value)} placeholder={t('例如：下週六朋友聚餐，晚上六點到十點之間，吃一小時，週五中午前回覆。', 'Dinner next Saturday, one hour between 6 and 10 pm. Reply by Friday at noon.')} />
+    <textarea id="plan-description" aria-labelledby="plan-assistant-heading" rows={4} maxLength={6000} value={text} disabled={busy || disabled} onChange={e => setText(e.target.value)} placeholder={t('例如：下週六朋友聚餐，晚上六點到十點之間，吃一小時，週五中午前回覆。', 'Dinner next Saturday, one hour between 6 and 10 pm. Reply by Friday at noon.')} />
     <button type="button" className="dining-primary" disabled={busy || disabled || !text.trim()} onClick={() => void prepare()}>{busy ? t('正在整理…', 'Preparing…') : t('整理成草稿', 'Prepare draft')}</button>
-    <p className="dining-note">{t('AI 只整理邀約條件。朋友的空檔由本人確認；所有時間以台灣時區顯示。', 'AI prepares the invitation. Each friend confirms their own availability. All times use Taipei time.')}</p>
     {message && <p role="status">{message}</p>}
   </section>;
 }

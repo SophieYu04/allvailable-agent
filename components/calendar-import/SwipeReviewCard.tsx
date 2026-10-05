@@ -12,7 +12,6 @@ export default function SwipeReviewCard({children,remaining,disabled,canConfirm,
    {onDiscard&&<button type="button" className="review-discard-stack" disabled={disabled} aria-label={t("刪除整疊卡片","Discard all cards")} title={t("刪除整疊卡片","Discard all cards")} onClick={onDiscard}>×</button>}
    {children}
    <div className={'review-card-actions'+(simple?' simple':'')}><button type="button" disabled={disabled} onClick={onSkip}>{t('✕ 略過','✕ Skip')}</button>{!simple&&<button type="button" disabled={disabled} onClick={onEdit}>{t('編輯','Edit')}</button>}<button type="button" className="dining-primary" disabled={disabled||!canConfirm} onClick={onConfirm}>{simple?t('✓ Busy','✓ Busy'):t('✓ 加入時間表','✓ Add to timetable')}</button></div>
-   <p className="swipe-hint">{t('← 略過 · 右滑確認 →','← Skip · Swipe right to confirm →')}</p>
   </div>
  </div>;
 }
