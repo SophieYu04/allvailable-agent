@@ -4,8 +4,8 @@ import "@/components/dining/product-ui.css";
 import { LanguageProvider } from "@/components/dining/Language";
 
 export const metadata: Metadata = {
-  title: "Allvailable | Find a time together",
-  description: "Share a link, add calendar screenshots or voice notes, and find a time everyone can make.",
+  title: "Allvailable | AI scheduling from screenshots and voice",
+  description: "Import availability from calendar screenshots or voice, review AI suggestions, and choose a time with required attendees available.",
   other: {
     "codex-preview": "development",
   },
