@@ -1,7 +1,7 @@
 name: Publish GitHub Pages
 on:
   push:
-    branches: [main]
+    branches: [codex/portfolio-2026]
   workflow_dispatch:
 permissions:
   contents: read
