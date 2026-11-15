@@ -1,39 +1,38 @@
 # Allvailable
 
-**AI scheduling from screenshots and voice.**
+Allvailable helps a group agree on a meeting time without sharing everyone's calendar details. Participants enter availability directly or review time slots extracted from screenshots and voice replies before submitting them.
 
-Allvailable helps groups choose a meeting time from real availability. Its AI reads calendar screenshots and voice replies, then turns them into time slots for each person to review. Event details and raw imports are not shared with the group.
-
-[Open app](https://sophieyu04.github.io/allvailable-agent/) · [Setup guide](docs/hackathon/README.md) · [Verified deployment](docs/hackathon/deployment-20261001.md)
+[Open the app](https://sophieyu04.github.io/allvailable-agent/) · [Setup guide](docs/hackathon/README.md) · [MIT license](LICENSE)
 
 ## How it works
 
-1. **Invite:** describe a gathering, set the date range, and share its link or six-digit code.
-2. **Import:** upload a calendar screenshot, record a voice reply, or enter time ranges directly. Review AI-extracted cards before they change your availability.
-3. **Decide:** compare suggested times scored across available and tentative replies. Mark people as **required** when they must attend; they must be explicitly available throughout the final time slot. Unknown or unsubmitted time never counts as available.
+1. An organizer creates an event with a date range and shares its link or six-digit code.
+2. Participants enter available or tentative times. Screenshot and voice imports produce editable cards; each person confirms them before they affect availability.
+3. The app scores candidate times. A person marked required must be explicitly available for the entire selected slot; unknown time is not treated as available.
 
-## Built with
+The final scheduling decision uses deterministic code after participants confirm their inputs. AI interprets text, screenshots, and voice. Raw imports and event details are kept out of the shared availability view.
 
-| Layer | Technology |
+## Architecture
+
+| Layer | Implementation |
 | --- | --- |
-| Web | React, TypeScript, GitHub Pages |
-| API | Cloudflare Workers |
-| Auth & data | Supabase Auth and Postgres with row-level security |
-| AI | NVIDIA Nemotron Super on Nebius Token Factory; Gemma 3 for visual calendar understanding |
+| Web | React and TypeScript; a static build is published to GitHub Pages. |
+| API | Cloudflare Workers. |
+| Identity and data | Supabase Auth and Postgres with row-level security. |
+| Interpretation | NVIDIA Nemotron on Nebius Token Factory and a vision model for calendar images. |
 
-The models interpret plans, screenshots, and voice replies. Deterministic code scores time slots; users approve imported availability before submission. Model credentials stay on the server.
+The repository includes the web app, API code, database migrations, tests, and deployment documentation. Model credentials are configured on the server, not bundled into the Pages build.
 
 ## Run locally
 
-Requires Node.js 22.13+ and npm.
+Requires Node.js 22.13+ and npm. Service-backed flows need your own environment configuration; see [the setup guide](docs/hackathon/README.md) and [`.env.example`](.env.example).
 
 ```sh
 npm ci
-# Create .env.local from .env.example and configure your own services.
 npm run dev
 ```
 
-Open `http://localhost:5173`. For a no-account, no-credit walkthrough, open `/preview` in development. See the [setup guide](docs/hackathon/README.md) for service configuration and [Pages deployment](docs/hackathon/github-pages.md) for hosting.
+Open `http://localhost:5173`. The development `/preview` route provides a walkthrough without an account or model credits.
 
 ```sh
 npm test
@@ -41,8 +40,8 @@ npm run lint
 npm run build:pages
 ```
 
-## Hackathon
+The [deployment guide](docs/hackathon/github-pages.md), [hosted deployment record](docs/hackathon/deployment-20261001.md), and [AI acceptance record](docs/hackathon/ai-acceptance-20261003.md) document the tested flows.
 
-Built for **Nebius × NVIDIA — Best Apps and Agents**. Real text, screenshot, and voice inference have been verified. See [October 3 AI acceptance](docs/hackathon/ai-acceptance-20261003.md), [calendar grid recognition](docs/hackathon/calendar-grid-evidence-20261002.md), [live voice cards](docs/hackathon/live-voice-evidence-20261002.md), [text and vision evidence](docs/hackathon/live-evidence-20260930.md) and [voice verification](docs/hackathon/voice-evidence-20261002.md). Final submission and video are still in preparation.
+## Limits
 
-[MIT License](LICENSE)
+Screenshot and voice extraction can be wrong, so participants must review imported cards. Service-backed AI flows require configured providers and may differ from the no-account preview. Evidence documents describe specific tested runs, not a guarantee of continuous service availability.
